@@ -8,35 +8,65 @@ from numbers import Number
 from .bases import Ranged, frozen_dataclass, slicer
 from .funcs import check_step
 
+frozen_slotted_dt = frozen_dataclass(slots=True)
 
-@frozen_dataclass(slots=True)
-class Progression(Ranged):
+# PENDING: Reverse and Negative indices are not supported
+
+
+@frozen_slotted_dt
+class BaseProgression(Ranged):
+    a1: Number
+
+    def __contains__(self, number: int, /) -> bool:
+        return self._getindex(number) in self.r
+
+    @property
+    def an(self, /) -> Number:
+        return self._getitem(self.r[-1])
+
+    def clear(self, /):
+        return type(self)(range(0), 0, 0)
+
+    def _getslice(self, r: range):
+        if r:
+            return self._sliced(r)
+        else:
+            return self.clear()
+
+    def count(self, number: int, /) -> int:
+        return self.r.count(self._getindex(number))
+
+    def index(self, number: Number, /) -> int:
+        return self.r.index(self._getindex(number))
+
+
+@frozen_slotted_dt
+class Progression(BaseProgression):
     """Emulates an Arithmetic Progression:
-    r = Arange indicating the indices of the progression.
+    r = A range indicating the indices of the progression.
     a1 = the first term of the progression.
     d = teh distance between each term.
 
     Example:
     >>P = Progression.sized(.1, .1, n=10)
     >>P[2] #prints .3
+
+
     """
 
-    a1: Number = 0
-    d: Number = 1
+    d: Number
 
     def __contains__(self, number, /):
         return self._getindex(number) in self.r
 
-    def rfunc(func, /):
-        return lambda self, /: func(self.r)
+    def __len__(self, /):
+        return len(self.r)
 
-    __len__, __bool__ = rfunc(len), rfunc(bool)
+    def __bool__(self, /):
+        return bool(self.r)
 
-    del rfunc
-
-    def _getslice(self, r, /):
-        (new := type(self)(self)._setattr(1, self.d, n=0), "r", r)
-        return new
+    def _sliced(self, r, /):
+        return type(self)(range(len(r)), self._getitem(r.start), r.step * self.d)
 
     def _getitem(self, index: int, /):
         return self.a1 + (index * self.d)
@@ -44,41 +74,11 @@ class Progression(Ranged):
     def _getindex(self, number: Number, /):
         return (number - self.a1) / self.d
 
-    @property
-    def start(self, /) -> Number:
-        return self._getitem(self.r.start)
+    def __iter__(self, /):
+        return it.islice(it.count(self.a1, self.d), self.r.stop)
 
-    @property
-    def step(self, /) -> Number:
-        return self.d * self.r.step
-
-    @property
-    def stop(self, /) -> Number:
-        return self._getitem(self.r.stop)
-
-    @property
-    def last(self, /) -> Number:
-        return self._getitem(self.r[-1])
-
-    def iterfunc(reverse, /):
-        def __iter__(self, /):
-            step = (r := self.r).step
-            if reverse:
-                start = self.last
-                step = -step
-
-            else:
-                start = self.start
-
-            return it.islice(it.count(start, self.step * step), len(r))
-
-        return __iter__
-
-    def count(self, number: Number, /) -> int:
-        return self.r.count(self._getindex(number))
-
-    def index(self, number: Number, /) -> int:
-        return self.r.index(self._getindex(number))
+    def __reversed__(self, /):
+        return it.islice(it.count(self.an, -self.d), self.r.stop)
 
     @classmethod
     @slicer
@@ -108,55 +108,51 @@ class Progression(Ranged):
         return cls(range(n), start, step)
 
     @classmethod
-    def sized(cls, /, start: Number = 0, step: Number = 1, *, n):
+    def sized(cls, /, a1: Number, d: Number, *, n: int):
         """Returns a Progression form start with step of size n"""
         if n < 0:
             raise ValueError("size must be non-negative")
-        return cls(range(n), start, step)
+        return cls(range(n), a1, d)
 
 
-@dataclass(slots=True, frozen=True)
-class GeometricProgression(Sequence):
-    a1: int
-    r: int
-    n: int
+@frozen_slotted_dt
+class GeometricProgression(BaseProgression):
+    ratio: Number
 
-    def __getitem__(self, index: int, /):
-        if index < 0:
-            index += self.n
-        if 0 <= index < self.n:
-            return self.a1 * self.r**index
+    def _getitem(self, index: int, /):
+        return self.a1 * self.ratio**index
+
+    def _getslice(self, r: range, /):
+        if r:
+            ...  # PENDING
         else:
-            raise IndexError("GeometricProgression Index out of range.")
+            return self.clear()
 
-    def __len__(self, /):
-        return self.n
+    def __iter__(self, /) -> Iterator[Number]:
+        return it.accumulate(
+            it.repeat(self.ratio, len(self.r) - 1), op.mul, initial=self.a1
+        )
 
-    def __iter__(self, /) -> Iterator[int]:
-        return it.accumulate(it.repeat(self.r, self.n - 1), op.mul, initial=self.a1)
+    def __reversed__(self, /) -> Iterator[Number]:
+        return it.accumulate(
+            it.repeat(self.ratio, len(self.r) - 1), op.floordiv, initial=self.an
+        )
 
-    def __reversed__(self, /) -> Iterator[int]:
-        n = self.n - 1
-        last = self.a1 * (self.r**n)
-        return it.accumulate(it.repeat(self.r, n), op.floordiv, initial=last)
-
-    def __contains__(self, number: int, /) -> bool:
-        return self._to_index(number).is_integer()
-
-    def _to_index(self, number: int, /) -> float | int:
+    def _getindex(self, number: int, /) -> float | int:
         return math.log(number / self.a1, self.r)
 
     def index(self, number: int, /) -> int:
-        if (index := self._to_index(number)).is_integer():
-            return math.trunc(index)
-        else:
-            raise ValueError("Number not in GeometricProgression")
-
-    def count(self, number: int, /) -> int:
-        return +(number in self)
+        return self.r.index(self._getindex(number))
 
     def sum(self, /) -> int:
-        return (self.a1 * (1 - self.r**self.n)) // (1 - self.r)
+        return (self.start * (1 - self.r**self.n)) // (1 - self.r)
+
+    @classmethod
+    def sized(cls, /, a1: Number, ratio: Number, *, n: int):
+        """Returns a Progression form start with step of size n"""
+        if n < 0:
+            raise ValueError("size must be non-negative")
+        return cls(range(n), a1, ratio)
 
 
 if __name__ == "__main__":
