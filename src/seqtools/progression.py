@@ -17,8 +17,14 @@ frozen_slotted_dt = frozen_dataclass(slots=True)
 class BaseProgression(Ranged):
     a1: Number
 
-    def __contains__(self, number: int, /) -> bool:
+    def __contains__(self, number, /):
         return self._getindex(number) in self.r
+
+    def __len__(self, /):
+        return len(self.r)
+
+    def __bool__(self, /):
+        return bool(self.r)
 
     @property
     def an(self, /) -> Number:
@@ -55,15 +61,6 @@ class Progression(BaseProgression):
     """
 
     d: Number
-
-    def __contains__(self, number, /):
-        return self._getindex(number) in self.r
-
-    def __len__(self, /):
-        return len(self.r)
-
-    def __bool__(self, /):
-        return bool(self.r)
 
     def _sliced(self, r, /):
         return type(self)(range(len(r)), self._getitem(r.start), r.step * self.d)

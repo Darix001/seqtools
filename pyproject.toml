@@ -7,7 +7,9 @@ authors = [
     { name = "Dariel Buret", email = "darielburetrivera@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "more-itertools>=11.1.0",
+]
 
 [project.scripts]
 seqtools = "seqtools:main"
