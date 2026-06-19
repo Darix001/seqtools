@@ -123,7 +123,7 @@ class GeometricProgression(BaseProgression):
         if r:
             ratio = self.ratio * (step := r.step)
             if step < 0:
-                ratio = 1 / ratio
+                ratio = 1 / abs(ratio)
             return type(self)(range(len(r)), self._getitem(r.start), ratio)
         else:
             return self.clear()
