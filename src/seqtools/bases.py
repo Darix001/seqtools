@@ -1,8 +1,10 @@
-from collections import UserDict, UserList
+from __future__ import annotations
+
+from abc import abstractmethod
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, make_dataclass, replace
-from functools import partial, update_wrapper
-from typing import Any
+from dataclasses import dataclass, replace
+from functools import partial, update_wrapper, wraps
+from typing import TypeVar
 
 from .funcs import get_sizes
 
@@ -10,6 +12,18 @@ OPINT = int | None
 NS = Sequence[Sequence]
 TS = tuple[Sequence]
 frozen_dataclass = partial(dataclass, frozen=True)
+
+
+def boolen(func, FALSIES={"__bool__": False, "__len__": 0}, /):
+    value = FALSIES[func.__name__]
+
+    @wraps(func)
+    def function(self, /):
+        if (data := self.data) and (r := self.r):
+            return func(data, r)
+        return value
+
+    return function
 
 
 def checker(cls, /) -> Callable:
@@ -50,71 +64,46 @@ class BaseSequence(Sequence):
         raise IndexError(f"{type(self).__name__} object index out of range.")
 
 
-@frozen_dataclass(order=True)
-class SequenceView(BaseSequence):
-    """Creates a protected view of a sequence."""
-
-    data: Sequence
-
-    __slots__ = "data"
-
-    index, count = UserList.index, UserList.count
-
-    __class_getitem__ = UserDict.__class_getitem__
-
-    __len__, __contains__ = UserList.__len__, UserList.__contains__
-
-    __getitem__ = UserList.__getitem__
-
-    __iter__ = UserDict.__iter__
-
-    __reversed__, __bool__ = datamethod(reversed), datamethod(bool)
-
-    def __repr__(self, /):
-        return f"{type(self).__name__}({self.data!r})"
+base_frozen_dataclass = frozen_dataclass(init=False, repr=False, slots=True)
 
 
-class ReverseView(SequenceView):
-    """Creates a view that emulates the given sequence in reverse order."""
-
-    __slots__ = ()
-
-    __reversed__, __iter__ = SequenceView.__iter__, SequenceView.__reversed__
-
-    def __new__(cls, data: Sequence, /):
-        if isinstance(data, cls):
-            return SequenceView(data.data)
-        else:
-            return super().__new__(cls)
-
-    def __getitem__(self, index, /):
-        data = self.data
-        if isinstance(index, slice):
-            i = range(len(data) - 1, -1, -1)[index]
-            return type(self)(data[i.start : i.stop : i.step])
-        else:
-            return data[~index]
-
-    def index(self, value: Any, start: int = 0, stop: OPINT = None, /) -> int:
-        n = len(data := self.data)
-        getindex = data.index
-        if not start and stop is None:
-            return ~getindex(value)
-        else:
-            return ~getindex(value, ~stop + n, ~start + n)
+@base_frozen_dataclass
+class WithData(BaseSequence):
+    T = TypeVar("T")
+    data: Sequence[T]
 
 
-class Size(SequenceView):
+@base_frozen_dataclass
+class Size(WithData):
     """Base Class for sequence wrappers that transform their sequence size."""
 
     __slots__ = ()
+
+    r: Sequence[int] | int
 
     def __bool__(self, /):
         return True if self.data and self.r else False
 
 
-class BaseIndexed(BaseSequence):
+@frozen_dataclass
+class BaseIndexed(Size):
     __slots__ = ()
+    r: Sequence[int]
+
+    @abstractmethod
+    def _getitem(self, index, /): ...
+
+    @abstractmethod
+    def _getslice(self, r, /): ...
+
+    @abstractmethod
+    def _count(self, obj, indices, /): ...
+
+    @abstractmethod
+    def _index(self, obj, indices, /): ...
+
+    @abstractmethod
+    def _contains(self, obj, indices, /): ...
 
     def __getitem__(self, index, /):
         if type(r := self.r[index]) is int:
@@ -145,16 +134,16 @@ class BaseIndexed(BaseSequence):
 class Ranged(BaseIndexed):
     """Base class for classes wich uses an attribute r of type range."""
 
-    __slots__ = "r"
+    __slots__ = ()
     r: range
 
 
-RelativeSized = make_dataclass(
-    "RelativeSized", (("r", int),), frozen=True, slots=True, bases=(Size,)
-)
+@frozen_dataclass
+class RelativeSized(Size):
+    r: int
 
 
-class SubSequence(SequenceView):
+class SubSequence(WithData):
     """Base Class for sequences of sequences"""
 
     __slots__ = ()
@@ -185,11 +174,11 @@ class Combinations(RelativeSized, SubSequence):
 
     __slots__ = ()
 
+    @abstractmethod
+    def _getitem(self, index, data, r): ...
+
     def __bool__(self, /):
         return not (r := self.r) or len(self.data) >= r
 
     def __getitem__(self, index, /):
         return tuple(self._getitem(index, self.data, self.r))
-
-
-del make_dataclass, replace, dataclass, UserList, UserDict

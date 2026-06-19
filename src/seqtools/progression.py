@@ -1,9 +1,10 @@
 import itertools as it
 import math
 import operator as op
+from abc import abstractmethod
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass
 from numbers import Number
+from typing import Self
 
 from .bases import Ranged, frozen_dataclass, slicer
 from .funcs import check_step
@@ -14,8 +15,17 @@ frozen_slotted_dt = frozen_dataclass(slots=True)
 
 
 @frozen_slotted_dt
-class BaseProgression(Ranged):
+class BaseProgression(Ranged, Sequence[Number]):
     a1: Number
+
+    @abstractmethod
+    def _getindex(self, number: Number) -> float | int: ...
+
+    @abstractmethod
+    def _getitem(self, index: int) -> Number: ...
+
+    @abstractmethod
+    def _sliced(self, r: range) -> Self: ...
 
     def __contains__(self, number, /):
         return self._getindex(number) in self.r
@@ -30,10 +40,10 @@ class BaseProgression(Ranged):
     def an(self, /) -> Number:
         return self._getitem(self.r[-1])
 
-    def clear(self, /):
+    def clear(self, /) -> Self:
         return type(self)(range(0), 0, 0)
 
-    def _getslice(self, r: range):
+    def _getslice(self, r: range) -> Self:
         if r:
             return self._sliced(r)
         else:
@@ -62,19 +72,19 @@ class Progression(BaseProgression):
 
     d: Number
 
-    def _sliced(self, r, /):
+    def _sliced(self, r, /) -> Self:
         return type(self)(range(len(r)), self._getitem(r.start), r.step * self.d)
 
-    def _getitem(self, index: int, /):
+    def _getitem(self, index: int, /) -> Number:
         return self.a1 + (index * self.d)
 
-    def _getindex(self, number: Number, /):
+    def _getindex(self, number: Number, /) -> Number:
         return (number - self.a1) / self.d
 
-    def __iter__(self, /):
+    def __iter__(self, /) -> Iterator[Number]:
         return it.islice(it.count(self.a1, self.d), self.r.stop)
 
-    def __reversed__(self, /):
+    def __reversed__(self, /) -> Iterator[Number]:
         return it.islice(it.count(self.an, -self.d), self.r.stop)
 
     @classmethod
@@ -121,9 +131,9 @@ class GeometricProgression(BaseProgression):
 
     def _getslice(self, r: range, /):
         if r:
-            ratio = self.ratio * (step := r.step)
-            if step < 0:
-                ratio = 1 / abs(ratio)
+            ratio = self.ratio * abs(r.step)
+            if r.step < 0:
+                ratio = 1 / ratio
             return type(self)(range(len(r)), self._getitem(r.start), ratio)
         else:
             return self.clear()
@@ -144,8 +154,8 @@ class GeometricProgression(BaseProgression):
     def index(self, number: Number, /) -> int:
         return self.r.index(self._getindex(number))
 
-    def sum(self, /) -> int:
-        return (self.start * (1 - self.r**self.n)) // (1 - self.r)
+    def sum(self, /) -> Number:
+        return (self.start * (1 - self.r**self.n)) / (1 - self.r)
 
     @classmethod
     def sized(cls, /, a1: Number, ratio: Number, *, n: int):

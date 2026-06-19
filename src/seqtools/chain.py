@@ -1,10 +1,10 @@
 from itertools import accumulate, pairwise, repeat
 
-from .bases import NS, OPINT, Sequence, SequenceView, calcsize, datamethod
+from .bases import NS, OPINT, Sequence, WithData, calcsize, datamethod
 from .funcs import CC_MAP, MAP, from_iterable, get_sizes
 
 
-class Chain(SequenceView):
+class Chain(WithData):
     """Same as it.chain but as a sequence.
     Emulates a Sequence that is the results of the concatenation of multiple sequences.
     This class can emulate the concatenation of sequences of multiple classes.
@@ -46,7 +46,7 @@ class Chain(SequenceView):
                     if index < (size := len(sequence)):
                         return sequence[index]
                     index -= size
-            self.IndexError()
+            self.index_error()
 
         size = [*get_sizes(data)]
         start, stop, step = index.indices(sum(size))
