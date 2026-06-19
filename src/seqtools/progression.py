@@ -175,4 +175,5 @@ if __name__ == "__main__":
     assert test_list[-3] == geoprog[-3]
     assert test_list[5] == geoprog[5]
     assert test_list.index(128) == geoprog.index(128)
+    assert test_list.count(128) == geoprog.count(128)
     assert builtins.sum(geoprog) == geoprog.sum()

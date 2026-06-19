@@ -1,7 +1,11 @@
-from itertools import accumulate, pairwise, repeat
+from itertools import accumulate, chain, pairwise
+from operator import methodcaller
+from typing import Any
 
 from .bases import NS, OPINT, Sequence, WithData, calcsize, datamethod
-from .funcs import CC_MAP, MAP, from_iterable, get_sizes
+from .funcs import get_sizes
+
+from_iterable = chain.from_iterable
 
 
 class Chain(WithData):
@@ -46,7 +50,7 @@ class Chain(WithData):
                     if index < (size := len(sequence)):
                         return sequence[index]
                     index -= size
-            self.index_error()
+            raise self.index_error()
 
         size = [*get_sizes(data)]
         start, stop, step = index.indices(sum(size))
@@ -72,7 +76,7 @@ class Chain(WithData):
     __iter__ = datamethod(from_iterable)
 
     def __reversed__(self, /):
-        return from_iterable(MAP[2](reversed(self.data)))
+        return from_iterable(map(reversed, reversed(self.data)))
 
     def __add__(self, value, /):
         if type(self) is type(value):
@@ -81,12 +85,11 @@ class Chain(WithData):
             return value
         return NotImplemented
 
-    def cc_func(func, fmap, /):  # Count and Contains Function decorator
-        return lambda self, obj, /: func(fmap(self.data, repeat(obj)))
+    def __contains__(self, obj: Any) -> bool:
+        return any(map(methodcaller("__contains__", obj), self.data))
 
-    __contains__, count = map(cc_func, (any, sum), CC_MAP)
-
-    del cc_func
+    def count(self, obj: Any) -> int:
+        return sum(map(methodcaller("count", obj), self.data))
 
     def index(self, value, start=0, stop: OPINT = None, /) -> int:
         data = self.data
@@ -115,7 +118,7 @@ class Chain(WithData):
                     else:
                         return value + size
 
-        self.value_error(value)
+        raise self.value_error(value)
 
     @classmethod
     def fromsequence(cls, data: NS, /):

@@ -58,16 +58,16 @@ class BaseSequence(Sequence):
             del cls.iterfunc
 
     def value_error(self, value, /):
-        raise ValueError(f"{value!r} not in {type(self).__name__}")
+        return ValueError(f"{value!r} not in {type(self).__name__}")
 
     def index_error(self, /):
-        raise IndexError(f"{type(self).__name__} object index out of range.")
+        return IndexError(f"{type(self).__name__} object index out of range.")
 
 
-base_frozen_dataclass = frozen_dataclass(init=False, repr=False, slots=True)
+base_frozen_dataclass = partial(frozen_dataclass, init=False, repr=False)
 
 
-@base_frozen_dataclass
+@base_frozen_dataclass(slots=True)
 class WithData(BaseSequence):
     T = TypeVar("T")
     data: Sequence[T]
@@ -121,7 +121,7 @@ class BaseIndexed(Size):
         if indices := self.r[start:stop]:
             return self._index(value, indices)
         else:
-            self.value_error(value)
+            raise self.value_error(value)
 
     def count(self, value, start: int = 0, stop: OPINT = None, /):
         if indices := self.r[start:stop]:
@@ -157,11 +157,11 @@ class SubSequence(WithData):
     def __contains__(self, value, /):
         return self._check(value) and self._contains(value)
 
-    def index(self, value, /, start: int = 0, stop: OPINT = None) -> int:
+    def index(self, value, /, start: int = 0, stop: int = ...) -> int:
         if self._check(value):
             return self._index(value, start, stop)
         else:
-            self.value_error(value)
+            raise self.value_error(value)
 
     def count(self, value, /) -> int:
         return self._count(value) if self._check(value) else 0

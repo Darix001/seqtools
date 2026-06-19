@@ -199,7 +199,7 @@ class Slice(Ranged, Indexed):
             return r.index(
                 index(value) if not (start or stop) else index(value, start, stop)
             )
-        self.value_error(value)
+        raise self.value_error(value)
 
     # peging
     def count(self, value, indices, /) -> int:
