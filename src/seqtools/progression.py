@@ -39,7 +39,7 @@ class BaseProgression(Ranged):
         else:
             return self.clear()
 
-    def count(self, number: int, /) -> int:
+    def count(self, number: Number, /) -> int:
         return self.r.count(self._getindex(number))
 
     def index(self, number: Number, /) -> int:
@@ -138,10 +138,10 @@ class GeometricProgression(BaseProgression):
             it.repeat(self.ratio, len(self.r) - 1), op.floordiv, initial=self.an
         )
 
-    def _getindex(self, number: int, /) -> float | int:
+    def _getindex(self, number: Number, /) -> float | int:
         return math.log(number / self.a1, self.r)
 
-    def index(self, number: int, /) -> int:
+    def index(self, number: Number, /) -> int:
         return self.r.index(self._getindex(number))
 
     def sum(self, /) -> int:
