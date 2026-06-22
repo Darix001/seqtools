@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import Counter, UserDict, UserList
 from collections.abc import Iterator, Sequence
-from functools import wraps
 from itertools import chain, islice
 from typing import Any, overload
 
@@ -69,7 +68,9 @@ class ReverseView(SequenceView):
         else:
             return super().__new__(cls)
 
-    def __getitem__(self, index: int | slice, /) -> SequenceView | ReverseView | T:
+    def __getitem__(
+        self, index: int | slice, /
+    ) -> SequenceView | ReverseView | WithData.T:
         data = self.data
         if isinstance(index, slice):
             indices = range(len(data))[index]
@@ -86,7 +87,7 @@ class ReverseView(SequenceView):
         if not start and stop is None:
             return ~getindex(value)
         else:
-            return ~getindex(value, ~stop + n, ~start + n)
+            return ~getindex(value, ~stop + n if stop else n, ~start + n)
 
 
 @frozen_dataclass
@@ -126,7 +127,6 @@ class Slice(Ranged, Indexed):
     >> x = Slice([1, 2, 3, 4, 5, 6, 7], 2, 5)
     >> print(x[2]) #prints 5
 
-    Notes: Negative steps, can cause undefined behavior.
     """
 
     __slots__ = ()
@@ -142,19 +142,22 @@ class Slice(Ranged, Indexed):
 
     def __reversed__(self, /):
         size = len(data := self.data)
-        if start := (r := self.r).start:
+        if start := (r := self.r).start or (step := r.step) < 0:
             return getitems(data, r)
         return islice(
             chain((None,), reversed(data)),
             size - start,
-            size - self.stop,
-            abs(self.step),
+            size - r.stop,
+            step,
         )
 
     def __iter__(self, /):
-        gen = iter(data := self.data)
         r = self.r
+        data = self.data
         stop, step = r.stop, r.step
+        if step < 0:
+            return getitems(data, r)
+        gen = iter(data)
         if start := r.start:
             try:
                 gen.__setstate__(start)
@@ -184,7 +187,6 @@ class Slice(Ranged, Indexed):
         value = min(len(data), r.stop) - r.start
         return -(-value // r.step) if value > 0 else 0
 
-
     def __eq__(self, value, /):
         return (
             type(self) is type(value) and self.data is value.data and self.r == value.r
@@ -202,13 +204,8 @@ class Slice(Ranged, Indexed):
         raise self.value_error(value)
 
     # peging
-    def count(self, value, indices, /) -> int:
-        if indices:
-            try:
-                return self.data.count(value, indices.start, indices.stop)
-            except TypeError:
-                return super().count(value)
-        return 0
+    def _count(self, value, r: range, /) -> int:
+        return self.data.count(value, r.start, r.stop)
 
-    def unpack(self, /) -> Iterator[Any]
+    def unpack(self, /) -> Sequence[WithData.T]:
         return self.data[(r := self.r).start : r.stop : r.step]

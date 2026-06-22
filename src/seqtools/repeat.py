@@ -115,7 +115,7 @@ class Mul(RelativeSized):
                 return index(value)
             div, start = divmod(start, r)
             if div_index(div):
-                return index(value, start, stop % r)
+                return index(value, start, stop % r if stop else r)
         raise self.value_error(value)
 
     def unpack(self, /) -> Sequence:

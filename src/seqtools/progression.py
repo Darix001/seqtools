@@ -3,13 +3,15 @@ import math
 import operator as op
 from abc import abstractmethod
 from collections.abc import Iterator, Sequence
+from dataclasses import dataclass, field
+from functools import partial
 from numbers import Number
 from typing import Self
 
-from .bases import Ranged, frozen_dataclass, slicer
+from .bases import Ranged, WithData, frozen_dataclass, slicer
 from .funcs import check_step
 
-frozen_slotted_dt = frozen_dataclass(slots=True)
+frozen_slotted_dt = partial(frozen_dataclass, slots=True)
 
 # PENDING: Reverse and Negative indices are not supported
 
@@ -17,18 +19,16 @@ frozen_slotted_dt = frozen_dataclass(slots=True)
 @frozen_slotted_dt
 class BaseProgression(Ranged, Sequence[Number]):
     a1: Number
+    data: Sequence[WithData.T] = field(init=False, repr=False)
 
     @abstractmethod
-    def _getindex(self, number: Number) -> float | int: ...
-
-    @abstractmethod
-    def _getitem(self, index: int) -> Number: ...
+    def _unbound_index(self, number: Number) -> float | int: ...
 
     @abstractmethod
     def _sliced(self, r: range) -> Self: ...
 
-    def __contains__(self, number, /):
-        return self._getindex(number) in self.r
+    def _contains(self, number, /):
+        return self._unbound_index(number) in self.r
 
     def __len__(self, /):
         return len(self.r)
@@ -49,15 +49,15 @@ class BaseProgression(Ranged, Sequence[Number]):
         else:
             return self.clear()
 
-    def count(self, number: Number, /) -> int:
-        return self.r.count(self._getindex(number))
+    def _count(self, number: Number, r: range, /) -> int:
+        return r.count(self._unbound_index(number))
 
-    def index(self, number: Number, /) -> int:
-        return self.r.index(self._getindex(number))
+    def _index(self, number: Number, r: range, /) -> int:
+        return r.index(self._unbound_index(number))
 
 
-@frozen_slotted_dt
-class Progression(BaseProgression):
+@frozen_slotted_dt(order=True)
+class ArithmeticProgression(BaseProgression):
     """Emulates an Arithmetic Progression:
     r = A range indicating the indices of the progression.
     a1 = the first term of the progression.
@@ -78,7 +78,7 @@ class Progression(BaseProgression):
     def _getitem(self, index: int, /) -> Number:
         return self.a1 + (index * self.d)
 
-    def _getindex(self, number: Number, /) -> Number:
+    def _unbound_index(self, number: Number, /) -> Number:
         return (number - self.a1) / self.d
 
     def __iter__(self, /) -> Iterator[Number]:
@@ -122,21 +122,18 @@ class Progression(BaseProgression):
         return cls(range(n), a1, d)
 
 
-@frozen_slotted_dt
+@frozen_slotted_dt(order=True)
 class GeometricProgression(BaseProgression):
     ratio: Number
 
     def _getitem(self, index: int, /):
         return self.a1 * self.ratio**index
 
-    def _getslice(self, r: range, /):
-        if r:
-            ratio = self.ratio * abs(r.step)
-            if r.step < 0:
-                ratio = 1 / ratio
-            return type(self)(range(len(r)), self._getitem(r.start), ratio)
-        else:
-            return self.clear()
+    def _sliced(self, r: range) -> Self:
+        ratio = self.ratio * abs(r.step)
+        if r.step < 0:
+            ratio = 1 / ratio
+        return type(self)(range(len(r)), self._getitem(r.start), ratio)
 
     def __iter__(self, /) -> Iterator[Number]:
         return it.accumulate(
@@ -148,11 +145,11 @@ class GeometricProgression(BaseProgression):
             it.repeat(self.ratio, len(self.r) - 1), op.floordiv, initial=self.an
         )
 
-    def _getindex(self, number: Number, /) -> float | int:
+    def _unbound_index(self, number: Number, /) -> float | int:
         return math.log(number / self.a1, self.r)
 
     def index(self, number: Number, /) -> int:
-        return self.r.index(self._getindex(number))
+        return self.r.index(self._unbound_index(number))
 
     def sum(self, /) -> Number:
         return (self.start * (1 - self.r**self.n)) / (1 - self.r)

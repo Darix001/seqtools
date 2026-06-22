@@ -8,7 +8,6 @@ from typing import Any
 
 from .bases import TS, Combinations, Sequence
 from .funcs import (
-    contains_and_count,
     cycle,
     efficient_nwise,
     get_sizes,
@@ -25,6 +24,15 @@ R_NONE = repeat(None)
 NWISE_ITER = {1: zip, 2: pairwise}
 
 EMPTY_ITER = iter(())
+
+
+def nwise_contains_or_count_deco(func, /):
+    def function(self, value, /):
+        data = efficient_nwise(self.data, self.r)
+        value = repeat(deque(value))
+        return func(map(eq, data, value))
+
+    return function
 
 
 class Nwise(Combinations):
@@ -65,22 +73,12 @@ class Nwise(Combinations):
     def __bool__(self, /):
         return self.r <= len(self.data)
 
-    def _contains(func, /):
-        def function(self, value, /):
-            data = efficient_nwise(self.data, self.r)
-            value = repeat(deque(value))
-            return func(map(eq, data, value))
+    def _index(self, value, start, stop, /):  # Pending implementation
+        return super().index(value, start, stop)
 
-        return function
+    _count = nwise_contains_or_count_deco(sum)
 
-    def _index(self, value, start, stop, /):
-        return Sequence.sub(self.data, value, start, stop)
-
-    _count = _contains(sum)
-
-    @_contains
-    def _contains(stream, /):
-        return next(filter(None, stream), None)
+    _contains = nwise_contains_or_count_deco(any)
 
 
 def product_contains_count_fn(func, fmap, /):

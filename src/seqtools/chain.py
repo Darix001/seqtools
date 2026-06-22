@@ -80,7 +80,7 @@ class Chain(WithData):
 
     def __add__(self, value, /):
         if type(self) is type(value):
-            self = self.__copy__()
+            self = self.fromsequence(self.data)
             self.data += value.data
             return value
         return NotImplemented
@@ -106,7 +106,9 @@ class Chain(WithData):
             if start < 0:
                 start += size[-1]
 
-            if stop < 0:
+            if stop is None:
+                stop = size[-1]
+            elif stop < 0:
                 stop += size[-1]
 
             for data, (size, n) in zip(data, pairwise(size)):
@@ -126,4 +128,4 @@ class Chain(WithData):
         return self
 
 
-del CC_MAP, calcsize
+del calcsize

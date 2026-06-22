@@ -10,13 +10,7 @@ from types import MethodType
 from typing import Any
 
 mapper = MethodType(MethodType, map)
-
-
-contains_and_count = (
-    op.contains,
-    op.countOf,
-)
-
+from_iterable = chain.from_iterable
 mapper = partial(partial, map)
 get_sizes = mapper(len)
 reverse_all = mapper(reversed)
