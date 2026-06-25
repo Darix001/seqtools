@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter, UserDict, UserList
 from collections.abc import Iterator, Sequence
 from itertools import chain, islice
-from typing import Any, overload
+from typing import Any, Self, overload
 
 from more_itertools import locate
 
@@ -51,9 +51,6 @@ class SequenceView(WithData):
 
     __reversed__, __bool__ = datamethod(reversed), datamethod(bool)
 
-    def __repr__(self, /):
-        return f"{type(self).__name__}({self.data!r})"
-
 
 class ReverseView(SequenceView):
     """Creates a view that emulates the given sequence in reverse order."""
@@ -68,9 +65,13 @@ class ReverseView(SequenceView):
         else:
             return super().__new__(cls)
 
-    def __getitem__(
-        self, index: int | slice, /
-    ) -> SequenceView | ReverseView | WithData.T:
+    @overload
+    def __getitem__(self, index: int, /) -> WithData.T: ...
+
+    @overload
+    def __getitem__(self, index: slice, /) -> Slice: ...
+
+    def __getitem__(self, index: int | slice, /) -> Slice | WithData.T:
         data = self.data
         if isinstance(index, slice):
             indices = range(len(data))[index]
@@ -83,17 +84,18 @@ class ReverseView(SequenceView):
 
     def index(self, value: Any, start: int = 0, stop: OPINT = None, /) -> int:
         n = len(data := self.data)
-        getindex = data.index
         if not start and stop is None:
-            return ~getindex(value)
+            return ~data.index(value)
         else:
-            return ~getindex(value, ~stop + n if stop else n, ~start + n)
+            return ~data.index(value, ~stop + n if stop else n, ~start + n)
 
 
 @frozen_dataclass
 class Indexed(BaseIndexed):
     """Emulates a sequence that is the result of collect a group of indexes of
     a determined sequence."""
+
+    __slots__ = ()
 
     def __len__(self, /):
         return len(self.r) if self.data else 0
@@ -124,21 +126,22 @@ class Indexed(BaseIndexed):
 class Slice(Ranged, Indexed):
     """Emulates a slice of the given sequence.
     Example:
-    >> x = Slice([1, 2, 3, 4, 5, 6, 7], 2, 5)
+    >> x = Slice.fromindices([1, 2, 3, 4, 5, 6, 7], 2, 5)
     >> print(x[2]) #prints 5
 
     """
 
     __slots__ = ()
 
+    @classmethod
     @slicer
-    def fromindices(self, data: Sequence, slicer: slice, /):
+    def fromindices(cls, data: Sequence, slice_obj: slice, /) -> Self:
         if isinstance(data, Slice):
-            r = data.r[slicer]
+            r = data.r[slice_obj]
         else:
-            r = range(*slicer.indices(len(data)))
+            r = range(*slice_obj.indices(len(data)))
 
-        super().__init__(data, r)
+        return cls(data, r)
 
     def __reversed__(self, /):
         size = len(data := self.data)

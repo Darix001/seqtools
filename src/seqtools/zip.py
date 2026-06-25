@@ -1,12 +1,12 @@
 from collections.abc import Iterator
-from functools import reduce
+from functools import partial
 from itertools import chain, islice, repeat, zip_longest
-from operator import getitem, indexOf, itemgetter, sub
-from typing import Any
+from operator import indexOf, itemgetter, sub
+from typing import Any, Self, TypeVar, Unpack, overload
 
 from .bases import (
     NS,
-    TS,
+    TVS,
     Sequence,
     SubSequence,
     calcsize,
@@ -14,12 +14,14 @@ from .bases import (
     frozen_dataclass,
     get_sizes,
 )
+from .basic import Slice
 from .funcs import get
 
 
-@frozen_dataclass(init=False, repr=False)
+@frozen_dataclass
 class BaseZip(SubSequence):
-    data: TS
+    data: Unpack[TVS]
+    __slots__ = ()
 
     def _levels(self, /) -> Iterator[tuple[Sequence, int]]:
         data = self.data
@@ -28,41 +30,39 @@ class BaseZip(SubSequence):
 
 
 @frozen_dataclass
-class Zip(BaseZip):
+class Zip[*TVS](BaseZip):
     """Same as builtins.zip but as a sequence."""
 
     __slots__ = "strict"
     strict: bool
 
-    def __init__(self, /, *sequences: Sequence, strict: bool = False):
-        super().__init__(sequences)
-        self._setattr("strict", strict)
-
-    def __bool__(self, /):
+    def __bool__(self, /) -> bool:
         return True if (data := self.data) and all(data) else False
 
     __len__ = calcsize(min)
 
-    def __getitem__(self, index, /):
+    @overload
+    def __getitem__(self, index: Any, /) -> tuple[Any]: ...
+
+    @overload
+    def __getitem__(self, index: slice, /) -> Self: ...
+
+    def __getitem__(self, index: Any | slice, /):
         data = self.data
-        if (index_type := type(index)) is tuple:
-            return reduce(getitem, index, data)
 
-        data = tuple(map(itemgetter(index), data))
+        if isinstance(index, slice):
+            return type(self)(*map(partial(Slice.fromindices, slice_obj=index), data))
+        else:
+            return tuple(map(itemgetter(index), data))
 
-        if index_type is slice:
-            return type(self)(*data, strict=self.strict)
-
-        return data
-
-    def __iter__(self, /):
+    def __iter__(self, /) -> Iterator[tuple[Any]]:
         return zip(*self.data, strict=self.strict)
 
-    def __reversed__(self, /):
+    def __reversed__(self, /) -> Iterator[tuple[Any]]:
         return zip(*self._reversegen(self._levels(), self.strict))
 
     @staticmethod
-    def _reversegen(levels, r, /):
+    def _reversegen(levels, r, /) -> Iterator[tuple[Any]]:
         for i, (data, level) in enumerate(levels):
             data = reversed(data)
             if level:
@@ -71,26 +71,13 @@ class Zip(BaseZip):
                 data = islice(data, level, None)
             yield data
 
-    def _contains(self, value, /):
-        try:
-            self.index(value)
-        except ValueError:
-            return
-        else:
-            return True
+    _contains = Sequence.__contains__
+    _count = Sequence.count
 
-    def _count(self, value, /):
-        start = (0,)
-        try:
-            for start in enumerate(self.iter_index(value)):  # PENDING
-                pass
-        except ValueError:
-            return start[0]
-
-    def _check(self, value, /):
+    def _check(self, value, /) -> bool:
         return type(value) is tuple and len(value) == len(self.data)
 
-    def _index(self, values, start, stop, /):
+    def _index(self, values, start, stop, /) -> int:
         if data := self.data:
             if start is not None:
                 indices = [
@@ -113,37 +100,44 @@ class Zip(BaseZip):
 
             return maxvalue
 
-        self.value_error(values)
+        raise self.value_error(values)
 
     @classmethod
-    def unzip(cls, data: NS, strict: bool = False):
+    def unzip(cls, data: NS, strict: bool = False) -> Self:
         (new := cls(strict=strict))._setattr("data", data)
         return new
 
 
+FT = TypeVar("FT", bound=Any)
+
+
 @frozen_dataclass
-class Zip_longest(BaseZip):
+class Zip_longest[*TVS](BaseZip):
     """Same as it.zip_longest but as a sequence."""
 
     __slots__ = "fillvalue"
-    fillvalue: Any
-
-    def __init__(self, /, *sequences: TS, fillvalue: Any = None):
-        super().__init__(sequences)
-        self._setattr("fillvalue", fillvalue)
+    fillvalue: FT
 
     datamethod(any)
 
     __len__ = calcsize(max)
 
+    @overload
+    def __getitem__(self, index: slice, /) -> Self: ...
+
+    @overload
+    def __getitem__(self, index: int, /) -> tuple[FT | Any]: ...
+
     def __getitem__(self, index, /):
+        data = self.data
         if isinstance(index, slice):
-            return super().__getitem__(index)
-        default = self.fillvalue
-        return tuple(
-            get(data, index, default) if level else data[index]
-            for data, level in self._levels()
-        )
+            return type(self)(*map(partial(Slice.fromindices, slice_obj=index), data))
+        else:
+            default = self.fillvalue
+            return tuple(
+                get(data, index, default) if level else data[index]
+                for data, level in self._levels()
+            )
 
     def __iter__(self, /):
         return zip_longest(*self.data, fillvalue=self.fillvalue)

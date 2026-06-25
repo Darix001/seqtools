@@ -21,9 +21,6 @@ class Repeat[V](Ranged):
         super().__init__(range(times >= 0 and times))
         self._setattr("value", object)
 
-    def __repr__(self, /):
-        return f"{type(self).__name__}({self.value!r}, {self.r.stop!r})"
-
     def __len__(self, /) -> int:
         return self.r.stop
 
@@ -62,7 +59,12 @@ class Repeat[V](Ranged):
 
 @frozen_dataclass
 class Mul(RelativeSized):
-    """Emulates a data sequence multiplied r times."""
+    """Emulates a data sequence repeated r times.
+    Example:
+        a = Mul(range(2), 3)
+        print(*a)
+        #prints 0 1 0 1 0 1
+    """
 
     __slots__ = ()
 
@@ -71,9 +73,6 @@ class Mul(RelativeSized):
             r *= data.r
             data = data.data
         return super().__init__(data, r)
-
-    def __repr__(self, /):
-        return f"{type(self).__name__}({self.data!r}, {self.r!r})"
 
     def __mul__(self, r, /):
         return self._replace(r=self.r * r)

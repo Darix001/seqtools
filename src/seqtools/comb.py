@@ -1,12 +1,13 @@
 from collections import deque
 from collections.abc import Iterator
+from dataclasses import field
 from functools import partial
 from itertools import accumulate, chain, islice, pairwise, repeat, tee
 from math import factorial, perm, prod, sumprod, trunc
 from operator import eq, floordiv, indexOf, methodcaller, mul, sub
-from typing import Any
+from typing import Any, Unpack
 
-from .bases import TS, Combinations, Sequence
+from .bases import TS, TVS, Combinations, Sequence, frozen_dataclass
 from .funcs import (
     cycle,
     efficient_nwise,
@@ -85,23 +86,13 @@ def product_contains_count_fn(func, fmap, /):
     return lambda self, value, /: func(fmap(self.data * self.r, value))
 
 
-class Product(Combinations):
+@frozen_dataclass
+class Product[*TVS](Combinations):
     """Same as it.product but acts as a sequence."""
 
-    __slots__ = ()
-    data: TS
-
-    def __init__(self, /, *args, repeat: int = 1):
-        super().__init__(args, repeat)
-
-    def __repr__(self, /):
-        if not (data := self.data):
-            args_repr = ""
-        else:
-            suffix = " " if len(data) == 1 else ", "
-            args_repr = f"{data!r}"[:-1] + suffix
-
-        return f"{type(self).__name__}({args_repr}repeat={self.r!r})"
+    __slots__ = "repeat"
+    data: Unpack[TVS]
+    repeat: int = field(kw_only=True)
 
     def __mul__(self, r, /):
         return type(self)(*self.data, repeat=self.r * r)

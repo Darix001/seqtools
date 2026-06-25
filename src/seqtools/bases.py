@@ -4,7 +4,7 @@ from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from functools import partial, update_wrapper, wraps
-from typing import TypeVar
+from typing import TypeVar, TypeVarTuple
 
 from .funcs import get_sizes
 
@@ -12,6 +12,7 @@ OPINT = int | None
 NS = Sequence[Sequence]
 TS = tuple[Sequence]
 frozen_dataclass = partial(dataclass, frozen=True)
+TVS = TypeVarTuple("Ts")
 
 
 def boolen(func, FALSIES={"__bool__": False, "__len__": 0}, /):
@@ -66,18 +67,21 @@ class BaseSequence(Sequence):
 
 base_frozen_dataclass = partial(frozen_dataclass, init=False, repr=False)
 
+T = TypeVar("T")
 
-@base_frozen_dataclass(slots=True)
-class WithData(BaseSequence):
-    T = TypeVar("T")
+
+@frozen_dataclass
+class WithData[T](BaseSequence):
+    T = T
     data: Sequence[T]
+    __slots__ = "data"
 
 
 @base_frozen_dataclass
 class Size(WithData):
     """Base Class for sequence wrappers that transform their sequence size."""
 
-    __slots__ = ()
+    __slots__ = "r"
 
     r: Sequence[int] | int
 
