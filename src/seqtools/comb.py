@@ -90,12 +90,8 @@ def product_contains_count_fn(func, fmap, /):
 class Product[*TVS](Combinations):
     """Same as it.product but acts as a sequence."""
 
-    __slots__ = "repeat"
     data: Unpack[TVS]
-    repeat: int = field(kw_only=True)
-
-    def __mul__(self, r, /):
-        return type(self)(*self.data, repeat=self.r * r)
+    r: int = field(kw_only=True, default=1)
 
     def __bool__(self, /):
         return all(data) if (data := self.data) else True
@@ -170,7 +166,7 @@ class Product[*TVS](Combinations):
 
     @classmethod
     def fromargs(cls, /, *args, repeat=1):
-        return cls(Mul(args, repeat))
+        return cls(*args, r=repeat)
 
 
 class Permutations(Combinations):

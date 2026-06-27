@@ -1,6 +1,3 @@
-"""This library is directly inspired by itertools, as the idea of conceiving a library
-for dealing with seqtools in a more efficient way."""
-
 import operator as op
 from collections import deque
 from collections.abc import Generator, Iterable, Iterator, MutableSequence, Sequence
