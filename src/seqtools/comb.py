@@ -5,7 +5,7 @@ from functools import partial
 from itertools import accumulate, chain, islice, pairwise, repeat, tee
 from math import factorial, perm, prod, sumprod, trunc
 from operator import eq, floordiv, indexOf, methodcaller, mul, sub
-from typing import Any, Unpack
+from typing import Any, Generic, Unpack
 
 from .bases import TS, TVT, Combinations, Sequence, frozen_dataclass
 from .funcs import (
@@ -87,7 +87,7 @@ def product_contains_count_fn(func, fmap, /):
 
 
 @frozen_dataclass
-class Product[*TVT](Combinations):
+class Product(Combinations, Generic[Unpack[TVT]]):
     """Same as it.product but acts as a sequence."""
 
     data: tuple[Unpack[TVT]]

@@ -2,7 +2,7 @@
 for dealing with seqtools in a more efficient way."""
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, TypeVar, TypeVarTuple, Unpack
 
 __all__ = [
     "nwise",
@@ -35,26 +35,55 @@ from .progression import GeometricProgression as geometric_progression
 from .repeat import Mul, Repeat, Repeats
 from .zip import Zip, ZipLongest
 
+TVT = TypeVarTuple("TVT")
 
-def product(*iterables: tuple[Sequence], repeat: int = 1) -> Product:
-    return Product(iterables, repeat)
-
-
-def zip(*iterables: tuple[Sequence], strict: bool = False) -> Zip:
-    return Zip(iterables, strict=strict)
+_product_TVT = Unpack[TypeVarTuple("iterables")]
 
 
-def zip_longest(*iterables: tuple[Sequence], fillvalue: Any = None) -> ZipLongest:
-    return ZipLongest(iterables, fillvalue=fillvalue)
+def product[_product_TVT](
+    *iterables: _product_TVT, repeat: int = 1
+) -> Product[_product_TVT]:
+    """Same as it.product but as a sequence."""
+    return Product[_product_TVT](iterables, repeat)
 
 
-def repeat(object: Any, times: int) -> Repeat:
-    return Repeat(object, times)
+_zip_TVT = Unpack[TypeVarTuple("iterables")]
 
 
-def mul(sequence: Sequence, times: int) -> Mul:
-    return Mul(sequence, times)
+def zip(*iterables: _zip_TVT, strict: bool = False) -> Zip[_zip_TVT]:
+    """Same as builtins.zip but as a sequence."""
+    return Zip[_zip_TVT](iterables, strict=strict)
 
 
-def repeats(sequence: Sequence, times: int) -> Repeats:
-    return Repeats(sequence, times)
+_zip_longest_TVT = Unpack[TypeVarTuple("iterables")]
+
+
+def zip_longest[_zip_longest_TVT](
+    *iterables: _zip_longest_TVT, fillvalue: Any = None
+) -> ZipLongest[_zip_longest_TVT]:
+    """Same as it.zip_longest but as a sequence."""
+    return ZipLongest[_zip_longest_TVT](iterables, fillvalue=fillvalue)
+
+
+_V = TypeVar("_V")
+
+
+def repeat[_V](object: Any, times: int) -> Repeat[_V]:
+    """Same as it.repeat but as a sequence."""
+    return Repeat[_V](object, times)
+
+
+T = TypeVar("T")
+
+
+def mul[T](sequence: Sequence[T], n: int) -> Mul[T]:
+    """Emulates the result of sequence * n"""
+    return Mul[T](sequence, n)
+
+
+T = TypeVar("T")
+
+
+def repeats[T](sequence: Sequence[T], n: int) -> Repeats[T]:
+    """Emulates each element in the sequence repeated n times"""
+    return Repeats[T](sequence, n)
