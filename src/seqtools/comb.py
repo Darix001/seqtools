@@ -7,7 +7,7 @@ from math import factorial, perm, prod, sumprod, trunc
 from operator import eq, floordiv, indexOf, methodcaller, mul, sub
 from typing import Any, Unpack
 
-from .bases import TS, TVS, Combinations, Sequence, frozen_dataclass
+from .bases import TS, TVT, Combinations, Sequence, frozen_dataclass
 from .funcs import (
     cycle,
     efficient_nwise,
@@ -87,10 +87,10 @@ def product_contains_count_fn(func, fmap, /):
 
 
 @frozen_dataclass
-class Product[*TVS](Combinations):
+class Product[*TVT](Combinations):
     """Same as it.product but acts as a sequence."""
 
-    data: Unpack[TVS]
+    data: tuple[Unpack[TVT]]
     r: int = field(kw_only=True, default=1)
 
     def __bool__(self, /):

@@ -1,12 +1,13 @@
 from collections.abc import Iterator
+from dataclasses import field
 from functools import partial
 from itertools import chain, islice, repeat, zip_longest
 from operator import indexOf, itemgetter, sub
-from typing import Any, Self, TypeVar, Unpack, overload
+from typing import Any, Generic, Self, TypeVar, Unpack, overload
 
 from .bases import (
     NS,
-    TVS,
+    TVT,
     Sequence,
     SubSequence,
     calcsize,
@@ -19,9 +20,10 @@ from .funcs import get
 
 
 @frozen_dataclass
-class BaseZip(SubSequence):
-    data: Unpack[TVS]
+class BaseZip(SubSequence, Generic[Unpack[TVT]]):
     __slots__ = ()
+
+    data: tuple[Unpack[TVT]]
 
     def _levels(self, /) -> Iterator[tuple[Sequence, int]]:
         data = self.data
@@ -29,12 +31,11 @@ class BaseZip(SubSequence):
         return zip(data, map(abs, map(sub, n, get_sizes(data))))
 
 
-@frozen_dataclass
-class Zip[*TVS](BaseZip):
+@frozen_dataclass(slots=True)
+class Zip(BaseZip):
     """Same as builtins.zip but as a sequence."""
 
-    __slots__ = "strict"
-    strict: bool
+    strict: bool = field(kw_only=True, default=False)
 
     def __bool__(self, /) -> bool:
         return True if (data := self.data) and all(data) else False
@@ -108,15 +109,11 @@ class Zip[*TVS](BaseZip):
         return new
 
 
-FT = TypeVar("FT", bound=Any)
-
-
 @frozen_dataclass
-class Zip_longest[*TVS](BaseZip):
+class ZipLongest(BaseZip):
     """Same as it.zip_longest but as a sequence."""
 
-    __slots__ = "fillvalue"
-    fillvalue: FT
+    fillvalue: Any = field(kw_only=True, default=None)
 
     datamethod(any)
 
@@ -126,13 +123,15 @@ class Zip_longest[*TVS](BaseZip):
     def __getitem__(self, index: slice, /) -> Self: ...
 
     @overload
-    def __getitem__(self, index: int, /) -> tuple[FT | Any]: ...
+    def __getitem__(self, index: int, /) -> tuple[Any]: ...
 
     def __getitem__(self, index, /):
         data = self.data
         if isinstance(index, slice):
             return type(self)(*map(partial(Slice.fromindices, slice_obj=index), data))
         else:
+            if index < 0:
+                index += len(self)
             default = self.fillvalue
             return tuple(
                 get(data, index, default) if level else data[index]

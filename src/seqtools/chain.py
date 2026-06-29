@@ -123,7 +123,7 @@ class Chain(WithData):
         raise self.value_error(value)
 
     @classmethod
-    def fromsequence(cls, data: NS, /):
+    def from_sequence(cls, data: NS, /):
         (self := cls())._setattr("data", data)
         return self
 

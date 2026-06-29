@@ -12,7 +12,7 @@ OPINT = int | None
 NS = Sequence[Sequence]
 TS = tuple[Sequence]
 frozen_dataclass = partial(dataclass, frozen=True)
-TVS = TypeVarTuple("Ts")
+TVT = TypeVarTuple("Ts")
 
 
 def boolen(func, FALSIES={"__bool__": False, "__len__": 0}, /):
