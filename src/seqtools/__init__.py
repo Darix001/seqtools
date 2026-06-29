@@ -30,8 +30,7 @@ from .comb import Nwise as nwise
 from .comb import Permutations as permutations
 from .comb import Product
 from .enumerated import Enumerated as enumerated
-from .progression import ArithmeticProgression as progression
-from .progression import GeometricProgression as geometric_progression
+from .progression import ArithmeticProgression, GeometricProgression
 from .repeat import Mul, Repeat, Repeats
 from .zip import Zip, ZipLongest
 
@@ -87,3 +86,8 @@ T = TypeVar("T")
 def repeats[T](sequence: Sequence[T], n: int) -> Repeats[T]:
     """Emulates each element in the sequence repeated n times"""
     return Repeats[T](sequence, n)
+
+
+progression = ArithmeticProgression.sized
+
+geometric_progression = GeometricProgression.sized

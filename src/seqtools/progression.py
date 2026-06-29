@@ -70,22 +70,22 @@ class ArithmeticProgression(BaseProgression):
 
     """
 
-    d: Number
+    distance: Number
 
     def _sliced(self, r, /) -> Self:
-        return type(self)(range(len(r)), self._getitem(r.start), r.step * self.d)
+        return type(self)(range(len(r)), self._getitem(r.start), r.step * self.distance)
 
     def _getitem(self, index: int, /) -> Number:
-        return self.a1 + (index * self.d)
+        return self.a1 + (index * self.distance)
 
     def _unbound_index(self, number: Number, /) -> Number:
-        return (number - self.a1) / self.d
+        return (number - self.a1) / self.distance
 
     def __iter__(self, /) -> Iterator[Number]:
-        return it.islice(it.count(self.a1, self.d), self.r.stop)
+        return it.islice(it.count(self.a1, self.distance), self.r.stop)
 
     def __reversed__(self, /) -> Iterator[Number]:
-        return it.islice(it.count(self.an, -self.d), self.r.stop)
+        return it.islice(it.count(self.an, -self.distance), self.r.stop)
 
     @classmethod
     @slicer
@@ -115,11 +115,11 @@ class ArithmeticProgression(BaseProgression):
         return cls(range(n), start, step)
 
     @classmethod
-    def sized(cls, /, a1: Number, d: Number, *, n: int):
+    def sized(cls, /, a1: Number, distance: Number, n: int):
         """Returns a Progression form start with step of size n"""
         if n < 0:
             raise ValueError("size must be non-negative")
-        return cls(range(n), a1, d)
+        return cls(range(n), a1, distance)
 
 
 @frozen_slotted_dt(order=True)
@@ -155,7 +155,7 @@ class GeometricProgression(BaseProgression):
         return (self.start * (1 - self.r**self.n)) / (1 - self.r)
 
     @classmethod
-    def sized(cls, /, a1: Number, ratio: Number, *, n: int):
+    def sized(cls, /, a1: Number, ratio: Number, n: int):
         """Returns a Progression form start with step of size n"""
         if n < 0:
             raise ValueError("size must be non-negative")
