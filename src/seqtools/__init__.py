@@ -20,6 +20,9 @@ __all__ = [
     "repeat",
     "mul",
     "repeats",
+    "all_equals",
+    "cycle",
+    "get",
 ]
 
 from .basic import ReverseView as rview
@@ -30,6 +33,7 @@ from .comb import Nwise as nwise
 from .comb import Permutations as permutations
 from .comb import Product
 from .enumerated import Enumerated as enumerated
+from .funcs import all_equals, cycle, get
 from .progression import ArithmeticProgression, GeometricProgression
 from .repeat import Mul, Repeat, Repeats
 from .zip import Zip, ZipLongest
