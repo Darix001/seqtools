@@ -2,6 +2,7 @@
 for dealing with seqtools in a more efficient way."""
 
 from collections.abc import Sequence
+from numbers import Number
 from typing import Any, TypeVar, TypeVarTuple, Unpack
 
 __all__ = [
@@ -20,6 +21,9 @@ __all__ = [
     "repeat",
     "mul",
     "repeats",
+    "all_equals",
+    "cycle",
+    "get",
 ]
 
 from .basic import ReverseView as rview
@@ -30,7 +34,9 @@ from .comb import Nwise as nwise
 from .comb import Permutations as permutations
 from .comb import Product
 from .enumerated import Enumerated as enumerated
+from .funcs import all_equals, cycle, get
 from .progression import ArithmeticProgression, GeometricProgression
+from .progression import T as PROG_T
 from .repeat import Mul, Repeat, Repeats
 from .zip import Zip, ZipLongest
 
@@ -88,6 +94,20 @@ def repeats[T](sequence: Sequence[T], n: int) -> Repeats[T]:
     return Repeats[T](sequence, n)
 
 
-progression = ArithmeticProgression.sized
+def progression[PROG_T](
+    a1: PROG_T, distance: PROG_T, size: int
+) -> ArithmeticProgression[PROG_T]:
+    if size < 0:
+        raise ValueError("size must be non-negative")
+    return ArithmeticProgression[PROG_T](a1, distance, range(size))
 
-geometric_progression = GeometricProgression.sized
+
+def geometric_progression[PROG_T](
+    a1: PROG_T, ratio: PROG_T, size: int
+) -> GeometricProgression[PROG_T]:
+    if size < 0:
+        raise ValueError("size must be non-negative")
+    return GeometricProgression[PROG_T](a1, ratio, range(size))
+
+
+

@@ -3,10 +3,12 @@ import math
 import operator as op
 from abc import abstractmethod
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass, field
+from dataclasses import field
+from decimal import Decimal
+from fractions import Fraction
 from functools import partial
-from numbers import Number
-from typing import Self
+from numbers import Integral, Real
+from typing import Generic, Self, TypeVar
 
 from .bases import Ranged, WithData, frozen_dataclass, slicer
 from .funcs import check_step
@@ -15,14 +17,16 @@ frozen_slotted_dt = partial(frozen_dataclass, slots=True)
 
 # PENDING: Reverse and Negative indices are not supported
 
+T = TypeVar("T", int, float, Decimal, Fraction, Real, Integral)
+
 
 @frozen_slotted_dt
-class BaseProgression(Ranged, Sequence[Number]):
-    a1: Number
+class BaseProgression(Ranged, Generic[T]):
+    a1: T
     data: Sequence[WithData.T] = field(init=False, repr=False)
 
     @abstractmethod
-    def _unbound_index(self, number: Number) -> float | int: ...
+    def _unbound_index(self, number: T) -> float | int: ...
 
     @abstractmethod
     def _sliced(self, r: range) -> Self: ...
@@ -37,7 +41,7 @@ class BaseProgression(Ranged, Sequence[Number]):
         return bool(self.r)
 
     @property
-    def an(self, /) -> Number:
+    def an(self, /) -> T:
         return self._getitem(self.r[-1])
 
     def clear(self, /) -> Self:
@@ -49,10 +53,10 @@ class BaseProgression(Ranged, Sequence[Number]):
         else:
             return self.clear()
 
-    def _count(self, number: Number, r: range, /) -> int:
+    def _count(self, number: T, r: range, /) -> int:
         return r.count(self._unbound_index(number))
 
-    def _index(self, number: Number, r: range, /) -> int:
+    def _index(self, number: T, r: range, /) -> int:
         return r.index(self._unbound_index(number))
 
 
@@ -70,22 +74,22 @@ class ArithmeticProgression(BaseProgression):
 
     """
 
-    distance: Number
+    distance: T
 
     def _sliced(self, r, /) -> Self:
         return type(self)(range(len(r)), self._getitem(r.start), r.step * self.distance)
 
-    def _getitem(self, index: int, /) -> Number:
+    def _getitem(self, index: int, /) -> T:
         return self.a1 + (index * self.distance)
 
-    def _unbound_index(self, number: Number, /) -> Number:
+    def _unbound_index(self, number: T, /) -> T:
         return (number - self.a1) / self.distance
 
-    def __iter__(self, /) -> Iterator[Number]:
-        return it.islice(it.count(self.a1, self.distance), self.r.stop)
+    def __iter__(self, /) -> Iterator[T]:
+        return it.islice(it.count(self.a1, self.distance), len(self))
 
-    def __reversed__(self, /) -> Iterator[Number]:
-        return it.islice(it.count(self.an, -self.distance), self.r.stop)
+    def __reversed__(self, /) -> Iterator[T]:
+        return it.islice(it.count(self.an, -self.distance), len(self))
 
     @classmethod
     @slicer
@@ -114,19 +118,12 @@ class ArithmeticProgression(BaseProgression):
 
         return cls(range(n), start, step)
 
-    @classmethod
-    def sized(cls, /, a1: Number, distance: Number, n: int):
-        """Returns a Progression form start with step of size n"""
-        if n < 0:
-            raise ValueError("size must be non-negative")
-        return cls(range(n), a1, distance)
-
 
 @frozen_slotted_dt(order=True)
 class GeometricProgression(BaseProgression):
-    ratio: Number
+    ratio: T
 
-    def _getitem(self, index: int, /):
+    def _getitem(self, index: int, /) -> T:
         return self.a1 * self.ratio**index
 
     def _sliced(self, r: range) -> Self:
@@ -135,37 +132,31 @@ class GeometricProgression(BaseProgression):
             ratio = 1 / ratio
         return type(self)(range(len(r)), self._getitem(r.start), ratio)
 
-    def __iter__(self, /) -> Iterator[Number]:
+    def __iter__(self, /) -> Iterator[T]:
         return it.accumulate(
             it.repeat(self.ratio, len(self.r) - 1), op.mul, initial=self.a1
         )
 
-    def __reversed__(self, /) -> Iterator[Number]:
+    def __reversed__(self, /) -> Iterator[T]:
         return it.accumulate(
             it.repeat(self.ratio, len(self.r) - 1), op.floordiv, initial=self.an
         )
 
-    def _unbound_index(self, number: Number, /) -> float | int:
-        return math.log(number / self.a1, self.r)
+    def _unbound_index(self, number: T, /) -> float | int:
+        return math.log(number / self.a1, self.ratio)
 
-    def index(self, number: Number, /) -> int:
+    def index(self, number: T, /) -> int:
         return self.r.index(self._unbound_index(number))
 
-    def sum(self, /) -> Number:
-        return (self.start * (1 - self.r**self.n)) / (1 - self.r)
-
-    @classmethod
-    def sized(cls, /, a1: Number, ratio: Number, n: int):
-        """Returns a Progression form start with step of size n"""
-        if n < 0:
-            raise ValueError("size must be non-negative")
-        return cls(range(n), a1, ratio)
+    def sum(self, /) -> T:
+        return (self.a1 * (1 - self.ratio ** len(self))) / (1 - self.ratio)
 
 
 if __name__ == "__main__":
     import builtins
 
     geoprog = GeometricProgression(2, 2, 10)
+    a = geoprog[1]
     test_list = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
     assert test_list == list(geoprog)
     assert test_list[::-1] == list(reversed(geoprog))
