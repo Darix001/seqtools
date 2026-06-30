@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from numbers import Number
 from typing import Any, TypeVar, TypeVarTuple, Unpack
 
+# replace dataclasss for atributes
 __all__ = [
     "nwise",
     "permutations",
@@ -108,6 +109,3 @@ def geometric_progression[PROG_T](
     if size < 0:
         raise ValueError("size must be non-negative")
     return GeometricProgression[PROG_T](a1, ratio, range(size))
-
-
-

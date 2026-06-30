@@ -1,12 +1,14 @@
 from itertools import count
 
-from .bases import SubSequence, frozen_dataclass
+from attrs import frozen
+
+from .bases import SubSequence
 from .funcs import get
 
 SENTINEL = object()
 
 
-@frozen_dataclass(slots=True)
+@frozen
 class Enumerated(SubSequence):
     """Same as builtins.enumerate but as a sequence."""
 

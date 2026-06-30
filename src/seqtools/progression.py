@@ -3,24 +3,22 @@ import math
 import operator as op
 from abc import abstractmethod
 from collections.abc import Iterator, Sequence
-from dataclasses import field
 from decimal import Decimal
 from fractions import Fraction
-from functools import partial
 from numbers import Integral, Real
 from typing import Generic, Self, TypeVar
 
-from .bases import Ranged, WithData, frozen_dataclass, slicer
-from .funcs import check_step
+from attrs import field, frozen
 
-frozen_slotted_dt = partial(frozen_dataclass, slots=True)
+from .bases import Ranged, WithData, slicer
+from .funcs import check_step
 
 # PENDING: Reverse and Negative indices are not supported
 
 T = TypeVar("T", int, float, Decimal, Fraction, Real, Integral)
 
 
-@frozen_slotted_dt
+@frozen(slots=True)
 class BaseProgression(Ranged, Generic[T]):
     a1: T
     data: Sequence[WithData.T] = field(init=False, repr=False)
@@ -60,7 +58,7 @@ class BaseProgression(Ranged, Generic[T]):
         return r.index(self._unbound_index(number))
 
 
-@frozen_slotted_dt(order=True)
+@frozen(order=True, slots=True)
 class ArithmeticProgression(BaseProgression):
     """Emulates an Arithmetic Progression:
     r = A range indicating the indices of the progression.
@@ -119,7 +117,7 @@ class ArithmeticProgression(BaseProgression):
         return cls(range(n), start, step)
 
 
-@frozen_slotted_dt(order=True)
+@frozen(order=True, slots=True)
 class GeometricProgression(BaseProgression):
     ratio: T
 
