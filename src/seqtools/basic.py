@@ -5,6 +5,7 @@ from collections.abc import Iterator, Sequence
 from itertools import chain, islice
 from typing import Any, Self, overload
 
+from attrs import field, frozen
 from more_itertools import locate
 
 from .bases import (
@@ -14,13 +15,12 @@ from .bases import (
     WithData,
     boolen,
     datamethod,
-    frozen_dataclass,
     slicer,
 )
 from .funcs import getitems
 
 
-@frozen_dataclass(order=True)
+@frozen(order=True)
 class SequenceView(WithData):
     """Creates a protected view of a sequence."""
 
@@ -90,7 +90,7 @@ class ReverseView(SequenceView):
             return ~data.index(value, ~stop + n if stop else n, ~start + n)
 
 
-@frozen_dataclass
+@frozen
 class Indexed(BaseIndexed):
     """Emulates a sequence that is the result of collect a group of indexes of
     a determined sequence."""
@@ -122,7 +122,7 @@ class Indexed(BaseIndexed):
         return getitems(self.data, self.r)
 
 
-@frozen_dataclass
+@frozen
 class Slice(Ranged, Indexed):
     """Emulates a slice of the given sequence.
     Example:
@@ -132,6 +132,7 @@ class Slice(Ranged, Indexed):
     """
 
     __slots__ = ()
+    r: range = field(converter=None)
 
     @classmethod
     @slicer

@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, replace
 from functools import partial, update_wrapper, wraps
 from typing import TypeVar, TypeVarTuple
+
+from attrs import evolve, field, frozen
 
 from .funcs import get_sizes
 
 OPINT = int | None
 NS = Sequence[Sequence]
 TS = tuple[Sequence]
-frozen_dataclass = partial(dataclass, frozen=True)
 TVT = TypeVarTuple("Ts")
 
 
@@ -45,12 +45,13 @@ def calcsize(func: Callable, /) -> Callable:
     return lambda self, /: func(get_sizes(self.data))
 
 
+@frozen
 class BaseSequence(Sequence):
     """Base class for all classes in this module."""
 
     __slots__ = ()
     iterfunc = None
-    _replace = replace
+    _replace = evolve
     _setattr = object.__setattr__
 
     def __init_subclass__(cls, /):
@@ -65,23 +66,20 @@ class BaseSequence(Sequence):
         return IndexError(f"{type(self).__name__} object index out of range.")
 
 
-base_frozen_dataclass = partial(frozen_dataclass, init=False, repr=False)
+base_frozen_dataclass = partial(frozen, init=False, repr=False)
 
 T = TypeVar("T")
 
 
-@frozen_dataclass
+@base_frozen_dataclass(slots=True)
 class WithData[T](BaseSequence):
     T = T
     data: Sequence[T]
-    __slots__ = "data"
 
 
 @base_frozen_dataclass
 class Size(WithData):
     """Base Class for sequence wrappers that transform their sequence size."""
-
-    __slots__ = "r"
 
     r: Sequence[int] | int
 
@@ -89,7 +87,7 @@ class Size(WithData):
         return True if self.data and self.r else False
 
 
-@frozen_dataclass
+@base_frozen_dataclass
 class BaseIndexed(Size):
     __slots__ = ()
     r: Sequence[int]
@@ -134,19 +132,21 @@ class BaseIndexed(Size):
             return 0
 
 
-@frozen_dataclass
+@base_frozen_dataclass
 class Ranged(BaseIndexed):
     """Base class for classes wich uses an attribute r of type range."""
 
     __slots__ = ()
-    r: range
+    r: range = field(converter=range)
 
 
-@frozen_dataclass
+@base_frozen_dataclass
 class RelativeSized(Size):
+    __slots__ = ()
     r: int
 
 
+@base_frozen_dataclass
 class SubSequence(WithData):
     """Base Class for sequences of sequences"""
 
@@ -171,6 +171,7 @@ class SubSequence(WithData):
         return self._count(value) if self._check(value) else 0
 
 
+@base_frozen_dataclass
 class Combinations(RelativeSized, SubSequence):
     """Base Class for combinatoric sequences. A combinations subclass is a type
     of sequence that returns r-length sucessive tuples of different combinations

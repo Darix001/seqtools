@@ -4,7 +4,7 @@ from collections.abc import Generator, Iterable, Iterator, MutableSequence, Sequ
 from functools import partial
 from itertools import chain, islice, repeat
 from types import MethodType
-from typing import Any
+from typing import Any, Optional
 
 mapper = MethodType(MethodType, map)
 from_iterable = chain.from_iterable
@@ -16,7 +16,7 @@ map_repeat = mapper(repeat)
 SENTINEL = object()
 
 
-def cycle(data: Sequence, n=None, /) -> Iterator:
+def cycle(data: Sequence, n: Optional[int] = None, /) -> Iterator:
     """Returns an Iterator that repeats the sequence n times.
     if n is None, the iterator repeats endlessly."""
     return from_iterable(repeat(data) if n is None else repeat(data, n))

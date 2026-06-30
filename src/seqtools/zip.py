@@ -5,21 +5,23 @@ from itertools import chain, islice, repeat, zip_longest
 from operator import indexOf, itemgetter, sub
 from typing import Any, Generic, Self, TypeVar, Unpack, overload
 
+from attrs import frozen
+
 from .bases import (
     NS,
     TVT,
     Sequence,
     SubSequence,
+    base_frozen_dataclass,
     calcsize,
     datamethod,
-    frozen_dataclass,
     get_sizes,
 )
 from .basic import Slice
 from .funcs import get
 
 
-@frozen_dataclass
+@base_frozen_dataclass
 class BaseZip(SubSequence, Generic[Unpack[TVT]]):
     __slots__ = ()
 
@@ -31,7 +33,7 @@ class BaseZip(SubSequence, Generic[Unpack[TVT]]):
         return zip(data, map(abs, map(sub, n, get_sizes(data))))
 
 
-@frozen_dataclass(slots=True)
+@frozen(slots=True)
 class Zip(BaseZip):
     """Same as builtins.zip but as a sequence."""
 
@@ -109,7 +111,7 @@ class Zip(BaseZip):
         return new
 
 
-@frozen_dataclass
+@frozen(slots=True)
 class ZipLongest(BaseZip):
     """Same as it.zip_longest but as a sequence."""
 

@@ -1,8 +1,11 @@
 from collections.abc import Iterator
 from itertools import repeat
+from operator import attrgetter
 from typing import Any, Self, TypeVar
 
-from .bases import OPINT, Ranged, RelativeSized, Sequence, WithData, frozen_dataclass
+from attrs import field, frozen
+
+from .bases import OPINT, Ranged, RelativeSized, Sequence, WithData
 from .funcs import from_iterable, map_repeat, reverse_all
 
 div_index = {0, -1}.__contains__
@@ -11,56 +14,55 @@ div_index = {0, -1}.__contains__
 V = TypeVar("V")
 
 
-@frozen_dataclass
+@frozen
 class Repeat[V](Ranged):
     """Same as it.repeat but as a sequence."""
 
-    value: V
-
-    def __init__(self, /, object: Any, times: int):
-        super().__init__(range(times >= 0 and times))
-        self._setattr("value", object)
+    data: V
+    r: range = field(
+        converter=lambda r: range(0 if r < 0 else r), repr=attrgetter("stop")
+    )
 
     def __len__(self, /) -> int:
         return self.r.stop
 
     def __iter__(self, /) -> Iterator[V]:
-        return repeat(self.value, len(self))
+        return repeat(self.data, self.r.stop)
 
     __reversed__ = __iter__
 
-    def __contains__(self, obj: Any, /):
-        return True if self.r.stop and self.value == obj else False
+    def _contains(self, obj: Any, r: range, /):
+        return self.data == obj
 
     def __add__(self, value, /):
         if isinstance(value, cls := type(self)):
-            if (v := self.value) == value.value:
+            if (v := self.data) == value.value:
                 return cls(v, self.r.stop + value.r.stop)
         return NotImplemented
 
     def _getitem(self, index: int, /) -> V:
-        return self.value
+        return self.data
 
-    def _getslice(self, r: range, /) -> Self[V]:
-        return type(self)(self.value, len(self))
+    def _getslice(self, r: range, /) -> Self:
+        return type(self)(self.data, self.r.stop)
 
-    def count(self, value: Any, /) -> int:
-        return self.r.stop if value in self else 0
+    def _count(self, value: Any, r: range, /) -> int:
+        return +(self.data == value)
 
-    def index(self, value: Any, /) -> int:
-        if value in self:
+    def _index(self, value: Any, r: range, /) -> int:
+        if self.data == value:
             return 0
         else:
             raise self.value_error(value)
 
     def tolist(self, /) -> list[V]:
-        return [self.value] * len(self)
+        return [self.data] * self.r.stop
 
     def to_tuple(self, /) -> tuple[V, ...]:
-        return (self.value,) * len(self)
+        return (self.data,) * self.r.stop
 
 
-@frozen_dataclass
+@frozen
 class Mul(RelativeSized):
     """Emulates a data sequence repeated r times.
     Example:
@@ -69,13 +71,14 @@ class Mul(RelativeSized):
         #prints 0 1 0 1 0 1
     """
 
+    r: int
     __slots__ = ()
 
-    def __init__(self, data: Sequence, r: int, /):
-        if isinstance(data, type(self)):
+    def __new__(cls, data: Sequence[WithData.T], r: int):
+        if isinstance(data, cls):
             r *= data.r
             data = data.data
-        return super().__init__(data, r)
+        return super().__new__(cls, data, r)
 
     def __mul__(self, r, /):
         return self._replace(r=self.r * r)
@@ -118,13 +121,13 @@ class Mul(RelativeSized):
             div, start = divmod(start, r)
             if div_index(div):
                 return index(value, start, stop % r if stop else r)
-        raise self.value_error(value)
+        raise self.data_error(value)
 
     def unpack(self, /) -> Sequence:
         return self.data * self.r
 
 
-@frozen_dataclass
+@frozen
 class Repeats(Mul):
     """Emulates a sequence with each elements repeated r times."""
 
@@ -150,7 +153,7 @@ class Repeats(Mul):
 
     def index(self, value, start=0, stop: OPINT = None, /) -> int:
         if not (r := self.r):
-            raise self.value_error(value)
+            raise self.data_error(value)
 
         index = self.data.index
 

@@ -1,13 +1,14 @@
 from collections import deque
 from collections.abc import Iterator
-from dataclasses import field
 from functools import partial
 from itertools import accumulate, chain, islice, pairwise, repeat, tee
 from math import factorial, perm, prod, sumprod, trunc
 from operator import eq, floordiv, indexOf, methodcaller, mul, sub
 from typing import Any, Generic, Unpack
 
-from .bases import TS, TVT, Combinations, Sequence, frozen_dataclass
+from attrs import field, frozen
+
+from .bases import TS, TVT, Combinations, Sequence
 from .funcs import (
     cycle,
     efficient_nwise,
@@ -86,7 +87,7 @@ def product_contains_count_fn(func, fmap, /):
     return lambda self, value, /: func(fmap(self.data * self.r, value))
 
 
-@frozen_dataclass
+@frozen
 class Product(Combinations, Generic[Unpack[TVT]]):
     """Same as it.product but acts as a sequence."""
 
