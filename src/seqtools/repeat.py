@@ -25,7 +25,7 @@ class Repeat[V](Ranged):
         return self.r.stop
 
     def __iter__(self, /) -> Iterator[V]:
-        return repeat(self.value, self.r.stop)
+        return repeat(self.value, len(self))
 
     __reversed__ = __iter__
 
@@ -41,8 +41,8 @@ class Repeat[V](Ranged):
     def _getitem(self, index: int, /) -> V:
         return self.value
 
-    def _getslice(self, r: range, /) -> Self:
-        return type(self)(self.value, len(r))
+    def _getslice(self, r: range, /) -> Self[V]:
+        return type(self)(self.value, len(self))
 
     def count(self, value: Any, /) -> int:
         return self.r.stop if value in self else 0
@@ -53,8 +53,11 @@ class Repeat[V](Ranged):
         else:
             raise self.value_error(value)
 
-    def tolist(self, /) -> list:
-        return [self.value] * self.r.stop
+    def tolist(self, /) -> list[V]:
+        return [self.value] * len(self)
+
+    def to_tuple(self, /) -> tuple[V, ...]:
+        return (self.value,) * len(self)
 
 
 @frozen_dataclass
