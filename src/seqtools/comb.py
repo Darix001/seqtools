@@ -178,10 +178,10 @@ class Product[T](Combinations):
         datas, sizes = self._its()
         return trunc(sumprod(map(indexOf, datas, value), cumprod(sizes)))
 
-    def _contains(self, obj: Any):
+    def _contains(self, obj: Any) -> bool:
         return all(map(methodcaller("__contains__", obj), self.data))
 
-    def _count(self, obj: Any):
+    def _count(self, obj: Any) -> int:
         return prod(map(methodcaller("count", obj), self.data))
 
     @classmethod
