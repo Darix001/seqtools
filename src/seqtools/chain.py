@@ -3,7 +3,7 @@ from operator import methodcaller
 from typing import Any
 
 from .bases import NS, OPINT, Sequence, WithData, calcsize, datamethod
-from .funcs import get_sizes
+from .funcs import isizes
 
 from_iterable = chain.from_iterable
 
@@ -52,7 +52,7 @@ class Chain(WithData):
                     index -= size
             raise self.index_error()
 
-        size = [*get_sizes(data)]
+        size = [*isizes(data)]
         start, stop, step = index.indices(sum(size))
         key = step != 1
         values = []
@@ -93,7 +93,7 @@ class Chain(WithData):
 
     def index(self, value, start=0, stop: OPINT = None, /) -> int:
         data = self.data
-        size = [*accumulate(get_sizes(data), initial=0)]
+        size = [*accumulate(isizes(data), initial=0)]
         if stop is None and not start:
             for data, size in zip(data, size):
                 try:

@@ -9,7 +9,7 @@ from typing import Any, Optional, TypeVar
 mapper = MethodType(MethodType, map)
 from_iterable = chain.from_iterable
 mapper = partial(partial, map)
-get_sizes = mapper(len)
+isizes = mapper(len)
 reverse_all = mapper(reversed)
 map_repeat = mapper(repeat)
 

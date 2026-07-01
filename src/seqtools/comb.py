@@ -1,10 +1,10 @@
 from collections import deque
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from functools import partial
 from itertools import accumulate, chain, islice, pairwise, repeat, tee
 from math import factorial, perm, prod, sumprod, trunc
 from operator import eq, floordiv, indexOf, methodcaller, mul, sub
-from typing import Any
+from typing import Any, Self
 
 from attrs import field, frozen
 
@@ -12,8 +12,8 @@ from .bases import Combinations, Sequence
 from .funcs import (
     cycle,
     efficient_nwise,
-    get_sizes,
     getitems,
+    isizes,
     map_repeat,
     reverse_all,
 )
@@ -112,7 +112,7 @@ class Product[T](Combinations):
 
     @property
     def sizes(self, /) -> Iterator[int]:
-        return get_sizes(self.data)
+        return isizes(self.data)
 
     def __iter__(self, /) -> Iterator[tuple[T, ...]]:
         if not (data := self.data) or not (r := self.r):
@@ -123,7 +123,7 @@ class Product[T](Combinations):
 
         datas = cycle(data)
         nargs = len(data) * r
-        *count, n = cumprod(islice(sizes := get_sizes(datas), nargs))
+        *count, n = cumprod(islice(sizes := isizes(datas), nargs))
         times = [*map(floordiv, map(floordiv, repeat(n), sizes), count)]
         first, *values = islice(datas, nargs)
 
@@ -148,7 +148,7 @@ class Product[T](Combinations):
 
         datas = cycle(data)
         nargs = len(data) * r
-        *count, n = cumprod(islice(sizes := get_sizes(datas), nargs))
+        *count, n = cumprod(islice(sizes := isizes(datas), nargs))
         times = [*map(floordiv, map(floordiv, repeat(n), sizes), count)]
         first, *values = islice(datas, nargs)
 
@@ -172,7 +172,7 @@ class Product[T](Combinations):
 
     def _its(self, /):
         datas, datas2 = tee(cycle(self.data, self.r))
-        return datas, get_sizes(datas2)
+        return datas, isizes(datas2)
 
     def _index(self, value, start, stop, /) -> int:
         datas, sizes = self._its()
@@ -185,7 +185,7 @@ class Product[T](Combinations):
         return prod(map(methodcaller("count", obj), self.data))
 
     @classmethod
-    def fromargs(cls, /, *args, repeat=1):
+    def fromargs(cls, /, *args: Sequence[T], repeat: int = 1) -> Self:
         return cls(*args, r=repeat)
 
 

@@ -15,7 +15,7 @@ from .bases import (
     base_frozen_dataclass,
     calcsize,
     datamethod,
-    get_sizes,
+    isizes,
 )
 from .basic import Slice
 from .funcs import get
@@ -30,7 +30,7 @@ class BaseZip(SubSequence, Generic[Unpack[TVT]]):
     def _levels(self, /) -> Iterator[tuple[Sequence, int]]:
         data = self.data
         n = repeat(len(self))
-        return zip(data, map(abs, map(sub, n, get_sizes(data))))
+        return zip(data, map(abs, map(sub, n, isizes(data))))
 
 
 @frozen(slots=True)

@@ -7,7 +7,7 @@ from typing import Any, Optional, Self, TypeVar, TypeVarTuple
 
 from attrs import evolve, field, frozen
 
-from .funcs import get_sizes
+from .funcs import isizes
 
 OPINT = Optional[int]
 NS = Sequence[Sequence[Any]]
@@ -42,7 +42,7 @@ def datamethod(func: Callable, /) -> Callable:
 
 
 def calcsize(func: Callable, /) -> Callable:
-    return lambda self, /: func(get_sizes(self.data))
+    return lambda self, /: func(isizes(self.data))
 
 
 @frozen
