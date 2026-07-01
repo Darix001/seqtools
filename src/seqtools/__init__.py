@@ -44,10 +44,7 @@ TVT = TypeVarTuple("TVT")
 _product_TVT = Unpack[TypeVarTuple("iterables")]
 
 
-def product[T](*iterables: Sequence[T], repeat: int = 1) -> Product[T]:
-    """Same as it.product but as a sequence."""
-    return Product[T](iterables, r=repeat)
-
+product = Product.from_args
 
 _zip_TVT = Unpack[TypeVarTuple("iterables")]
 

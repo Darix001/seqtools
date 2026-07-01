@@ -185,7 +185,7 @@ class Product[T](Combinations):
         return prod(map(methodcaller("count", obj), self.data))
 
     @classmethod
-    def fromargs(cls, /, *args: Sequence[T], repeat: int = 1) -> Self:
+    def from_args(cls, /, *args: Sequence[T], repeat: int = 1) -> Self:
         return cls(*args, r=repeat)
 
 
