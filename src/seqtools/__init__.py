@@ -42,19 +42,12 @@ from .repeat import Repeat as repeat
 from .repeat import Repeats as repeats
 from .zip import Zip, ZipLongest
 
-TVT = TypeVarTuple("TVT")
-
-_product_TVT = Unpack[TypeVarTuple("iterables")]
-
-
 product = Product.from_args
 
-_zip_TVT = Unpack[TypeVarTuple("iterables")]
 
-
-def zip(*iterables: _zip_TVT, strict: bool = False) -> Zip[_zip_TVT]:
+def zip[T](*iterables: Sequence[T], strict: bool = False) -> Zip[T]:
     """Same as builtins.zip but as a sequence."""
-    return Zip[_zip_TVT](iterables, strict=strict)
+    return Zip[T](iterables, strict=strict)
 
 
 def zip_longest[T](*iterables: Sequence[Any], fillvalue: Any = None) -> ZipLongest[T]:
