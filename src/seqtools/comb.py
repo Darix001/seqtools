@@ -139,7 +139,7 @@ class Product[T](Combinations):
 
         return zip(*values)
 
-    def __reversed__(self, /) -> Iterator[tuple[T]]:  # Pending
+    def __reversed__(self, /) -> Iterator[tuple[T, ...]]:  # Pending
         if not (data := self.data) or not (r := self.r):
             return iter(((),))
 
