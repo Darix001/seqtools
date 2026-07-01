@@ -4,7 +4,7 @@ from collections.abc import Generator, Iterable, Iterator, MutableSequence, Sequ
 from functools import partial
 from itertools import chain, islice, repeat
 from types import MethodType
-from typing import Any, Optional
+from typing import Any, Optional, TypeVar
 
 mapper = MethodType(MethodType, map)
 from_iterable = chain.from_iterable
@@ -15,20 +15,29 @@ map_repeat = mapper(repeat)
 
 SENTINEL = object()
 
+T = TypeVar("T")
 
-def cycle(data: Sequence, n: Optional[int] = None, /) -> Iterator:
+
+def cycle(data: Sequence[T], n: Optional[int] = None) -> Iterator[T]:
     """Returns an Iterator that repeats the sequence n times.
     if n is None, the iterator repeats endlessly."""
     return from_iterable(repeat(data) if n is None else repeat(data, n))
 
 
-def swap(data: MutableSequence, indices: Iterable[int]):
+def infinite_zip(*sequences: Sequence[Any]) -> Iterator[tuple[Any, ...]]:
+    return zip(*map(cycle, sequences))
+
+
+def swap(data: MutableSequence, indices: Iterable[int]) -> None:
     values = op.itemgetter(*indices)(data)
     for index, value in zip(indices, reversed(values)):
         data[index] = value
 
 
-def efficient_nwise(iterable: Iterable, n: int) -> Generator[deque]:
+T = TypeVar("T")
+
+
+def efficient_nwise(iterable: Iterable[T], n: int) -> Generator[deque[T]]:
     """Yields efficients nwise views of the given iterable re-using a
     collections.deque object."""
     data = deque(islice(iterable := iter(iterable), n - 1), n)
@@ -36,7 +45,10 @@ def efficient_nwise(iterable: Iterable, n: int) -> Generator[deque]:
         yield data
 
 
-def getitems(data: Sequence, items, /) -> Iterator:
+T = TypeVar("T")
+
+
+def getitems(data: Sequence[T], items: Iterable[Any], /) -> Iterator[T]:
     """fetchs and Yields each item of the data object."""
     return map(partial(op.getitem, data), items)
 
@@ -63,8 +75,11 @@ def check_step(step: int, /):
 
 # islice = slicer(efficient_slice)
 
+T = TypeVar("T")
+D = TypeVar("D", Any, None)
 
-def get(data: Sequence, index: int, default: Any = None, /):
+
+def get(data: Sequence[T], index: int, default: D = None, /) -> T | D:
     """Return the value for key if key is in the sequence, else default."""
     try:
         return data[index]

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import Counter, UserDict, UserList
+from collections import Counter, UserList
 from collections.abc import Iterator, Sequence
 from itertools import chain, islice
 from typing import Any, Self, overload
@@ -14,7 +14,6 @@ from .bases import (
     Ranged,
     WithData,
     boolen,
-    datamethod,
     slicer,
 )
 from .funcs import getitems
@@ -47,9 +46,14 @@ class SequenceView(WithData):
 
     __len__, __contains__ = UserList.__len__, UserList.__contains__
 
-    __iter__ = UserDict.__iter__
+    def __iter__(self, /) -> Iterator[WithData.T]:
+        return iter(self.data)
 
-    __reversed__, __bool__ = datamethod(reversed), datamethod(bool)
+    def __reversed__(self, /) -> Iterator[WithData.T]:
+        return reversed(self.data)
+
+    def __bool__(self, /) -> bool:
+        return bool(self.data)
 
 
 class ReverseView(SequenceView):
@@ -94,6 +98,8 @@ class ReverseView(SequenceView):
 class Indexed(BaseIndexed):
     """Emulates a sequence that is the result of collect a group of indexes of
     a determined sequence."""
+
+    r = field(alias="indices")
 
     __slots__ = ()
 

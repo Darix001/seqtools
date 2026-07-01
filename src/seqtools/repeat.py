@@ -14,14 +14,18 @@ div_index = {0, -1}.__contains__
 V = TypeVar("V")
 
 
+def pos_range(r: int) -> range:
+    """Returns range(r). If r is a negative number, returns range(0)"""
+    return range(0 if r < 0 else r)
+
+
 @frozen
 class Repeat[V](Ranged):
     """Same as it.repeat but as a sequence."""
 
     data: V
-    r: range = field(
-        converter=lambda r: range(0 if r < 0 else r), repr=attrgetter("stop")
-    )
+    r: range = field(converter=pos_range, repr=attrgetter("stop"))
+    size = property(attrgetter("r.stop"))
 
     def __len__(self, /) -> int:
         return self.r.stop

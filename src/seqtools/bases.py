@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from functools import partial, update_wrapper, wraps
-from typing import TypeVar, TypeVarTuple
+from typing import Any, Optional, Self, TypeVar, TypeVarTuple
 
 from attrs import evolve, field, frozen
 
 from .funcs import get_sizes
 
-OPINT = int | None
-NS = Sequence[Sequence]
-TS = tuple[Sequence]
+OPINT = Optional[int]
+NS = Sequence[Sequence[Any]]
+TS = tuple[Sequence[Any]]
 TVT = TypeVarTuple("Ts")
 
 
@@ -27,7 +27,7 @@ def boolen(func, FALSIES={"__bool__": False, "__len__": 0}, /):
     return function
 
 
-def checker(cls, /) -> Callable:
+def checker(cls, /) -> Callable[..., bool]:
     """Creates a Check method for SubSequence subclasses"""
     return lambda self, obj, /: type(obj) is cls and len(obj) == self.r
 
@@ -46,7 +46,7 @@ def calcsize(func: Callable, /) -> Callable:
 
 
 @frozen
-class BaseSequence(Sequence):
+class BaseSequence[T](Sequence):
     """Base class for all classes in this module."""
 
     __slots__ = ()
@@ -54,15 +54,16 @@ class BaseSequence(Sequence):
     _replace = evolve
     _setattr = object.__setattr__
 
-    def __init_subclass__(cls, /):
-        if (factory := cls.iterfunc) is not None:
-            cls.__iter__, cls.__reversed__ = map(factory, (None, True))
+    def __init_subclass__(cls, /) -> None:
+        factory: Callable[[bool], Callable[[Self], Iterator[Any]]] | None = cls.iterfunc
+        if factory is not None:
+            cls.__iter__, cls.__reversed__ = map(factory, (False, True))
             del cls.iterfunc
 
-    def value_error(self, value, /):
+    def value_error(self, value, /) -> ValueError:
         return ValueError(f"{value!r} not in {type(self).__name__}")
 
-    def index_error(self, /):
+    def index_error(self, /) -> IndexError:
         return IndexError(f"{type(self).__name__} object index out of range.")
 
 
@@ -78,7 +79,7 @@ class WithData[T](BaseSequence):
 
 
 @base_frozen_dataclass
-class Size(WithData):
+class Size[T](WithData):
     """Base Class for sequence wrappers that transform their sequence size."""
 
     r: Sequence[int] | int
@@ -88,7 +89,7 @@ class Size(WithData):
 
 
 @base_frozen_dataclass
-class BaseIndexed(Size):
+class BaseIndexed[T](Size):
     __slots__ = ()
     r: Sequence[int]
 
@@ -133,7 +134,7 @@ class BaseIndexed(Size):
 
 
 @base_frozen_dataclass
-class Ranged(BaseIndexed):
+class Ranged[T](BaseIndexed):
     """Base class for classes wich uses an attribute r of type range."""
 
     __slots__ = ()
@@ -141,13 +142,13 @@ class Ranged(BaseIndexed):
 
 
 @base_frozen_dataclass
-class RelativeSized(Size):
+class RelativeSized[T](Size):
     __slots__ = ()
     r: int
 
 
 @base_frozen_dataclass
-class SubSequence(WithData):
+class SubSequence[T](WithData):
     """Base Class for sequences of sequences"""
 
     __slots__ = ()
@@ -172,7 +173,7 @@ class SubSequence(WithData):
 
 
 @base_frozen_dataclass
-class Combinations(RelativeSized, SubSequence):
+class Combinations[T](RelativeSized, SubSequence):
     """Base Class for combinatoric sequences. A combinations subclass is a type
     of sequence that returns r-length sucessive tuples of different combinations
     of all elements in data."""

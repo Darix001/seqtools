@@ -1,14 +1,14 @@
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from functools import partial
 from itertools import accumulate, chain, islice, pairwise, repeat, tee
 from math import factorial, perm, prod, sumprod, trunc
 from operator import eq, floordiv, indexOf, methodcaller, mul, sub
-from typing import Any, Generic, Unpack
+from typing import Any
 
 from attrs import field, frozen
 
-from .bases import TS, TVT, Combinations, Sequence
+from .bases import Combinations, Sequence
 from .funcs import (
     cycle,
     efficient_nwise,
@@ -17,7 +17,6 @@ from .funcs import (
     map_repeat,
     reverse_all,
 )
-from .repeat import Mul
 
 cumprod = partial(accumulate, func=mul, initial=1)
 
@@ -88,16 +87,16 @@ def product_contains_count_fn(func, fmap, /):
 
 
 @frozen
-class Product(Combinations, Generic[Unpack[TVT]]):
+class Product[T](Combinations):
     """Same as it.product but acts as a sequence."""
 
-    data: tuple[Unpack[TVT]]
+    data: tuple[Sequence[T], ...]
     r: int = field(kw_only=True, default=1)
 
-    def __bool__(self, /):
+    def __bool__(self, /) -> bool:
         return all(data) if (data := self.data) else True
 
-    def _getitem(self, index, data, r, /):
+    def _getitem(self, index, data, r, /) -> tuple[T, ...]:
         # Code grabbed from more_itertools.nth_permutation
         index = range(len(self))[index]
         values = []
@@ -106,47 +105,67 @@ class Product(Combinations, Generic[Unpack[TVT]]):
             index, mod = divmod(index, size)
             values.append(data[mod])
 
-        return reversed(values)
+        return tuple(reversed(values))
 
-    def __len__(self, /):
+    def __len__(self, /) -> int:
         return prod(self.sizes) ** self.r
 
     @property
     def sizes(self, /) -> Iterator[int]:
         return get_sizes(self.data)
 
-    def iterfunc(reverse, /):
+    def __iter__(self, /) -> Iterator[tuple[T, ...]]:
+        if not (data := self.data) or not (r := self.r):
+            return iter(((),))
 
-        def __iter__(self, /):
-            if not (data := self.data) or not (r := self.r):
-                return iter(((),))
+        elif not all(data):
+            return EMPTY_ITER
 
-            elif not all(data):
-                return EMPTY_ITER
+        datas = cycle(data)
+        nargs = len(data) * r
+        *count, n = cumprod(islice(sizes := get_sizes(datas), nargs))
+        times = [*map(floordiv, map(floordiv, repeat(n), sizes), count)]
+        first, *values = islice(datas, nargs)
 
-            datas = cycle(data)
-            nargs = len(data) * r
-            *count, n = cumprod(islice(sizes := get_sizes(datas), nargs))
-            times = [*map(floordiv, map(floordiv, repeat(n), sizes), count)]
-            first, *values = islice(datas, nargs)
+        del count[0]
 
-            del count[0]
+        data = map(repeat, values, count)
 
-            data = map(repeat, values, count)
+        values[:] = map(chain.from_iterable, data)
+        values.insert(0, first)
+        values[:-1] = map(
+            chain.from_iterable, map(map_repeat, values[:-1], map_repeat(times))
+        )
 
-            if reverse:
-                first = reversed(first)
-                data = map(reverse_all, data)
+        return zip(*values)
 
-            values[:] = map(chain.from_iterable, data)
-            values.insert(0, first)
-            values[:-1] = map(
-                chain.from_iterable, map(map_repeat, values[:-1], map_repeat(times))
-            )
+    def __reversed__(self, /) -> Iterator[tuple[T]]:  # Pending
+        if not (data := self.data) or not (r := self.r):
+            return iter(((),))
 
-            return zip(*values)
+        elif not all(data):
+            return EMPTY_ITER
 
-        return __iter__
+        datas = cycle(data)
+        nargs = len(data) * r
+        *count, n = cumprod(islice(sizes := get_sizes(datas), nargs))
+        times = [*map(floordiv, map(floordiv, repeat(n), sizes), count)]
+        first, *values = islice(datas, nargs)
+
+        del count[0]
+
+        data = map(repeat, values, count)
+
+        first = reversed(first)
+        data = map(reverse_all, data)
+
+        values[:] = map(chain.from_iterable, data)
+        values.insert(0, first)
+        values[:-1] = map(
+            chain.from_iterable, map(map_repeat, values[:-1], map_repeat(times))
+        )
+
+        return zip(*values)
 
     def _check(self, value, /) -> bool:
         return type(value) is tuple and (len(value) // self.r) == len(self.data)
