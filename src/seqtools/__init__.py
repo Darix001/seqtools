@@ -45,11 +45,11 @@ from .zip import Zip, ZipLongest
 product = Product.from_args
 
 
-def zip[T](*iterables: Sequence[T], strict: bool = False) -> Zip[T]:
+def zip[*T](*iterables: Sequence[T], strict: bool = False) -> Zip[T]:
     """Same as builtins.zip but as a sequence."""
-    return Zip[T](iterables, strict=strict)
+    return Zip[*T](iterables, strict=strict)
 
 
-def zip_longest[T](*iterables: Sequence[Any], fillvalue: Any = None) -> ZipLongest[T]:
+def zip_longest[*T](*iterables: Sequence[Any], fillvalue: Any = None) -> ZipLongest[T]:
     """Same as it.zip_longest but as a sequence."""
-    return ZipLongest[T](iterables, fillvalue=fillvalue)
+    return ZipLongest[*T](iterables, fillvalue=fillvalue)

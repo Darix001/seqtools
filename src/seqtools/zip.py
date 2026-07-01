@@ -22,10 +22,10 @@ from .funcs import get
 
 
 @base_frozen_dataclass
-class BaseZip[T](SubSequence[T]):
+class BaseZip[*ZipT](SubSequence[ZipT]):
     __slots__ = ()
 
-    data: tuple[Unpack[TVT]]
+    data: tuple[*ZipT]
 
     def _levels(self, /) -> Iterator[tuple[Sequence, int]]:
         data = self.data
@@ -33,11 +33,8 @@ class BaseZip[T](SubSequence[T]):
         return zip(data, map(abs, map(sub, n, isizes(data))))
 
 
-T = TypeVarTuple("T")
-
-
 @frozen(slots=True)
-class Zip[T](BaseZip[T]):
+class Zip[*ZipT](BaseZip):
     """Same as builtins.zip but as a sequence."""
 
     strict: bool = field(kw_only=True, default=False)
@@ -48,12 +45,12 @@ class Zip[T](BaseZip[T]):
     __len__ = calcsize(min)
 
     @overload
-    def __getitem__(self, index: Any, /) -> tuple[Any]: ...
+    def __getitem__(self, index: Any, /) -> tuple[*ZipT]: ...
 
     @overload
     def __getitem__(self, index: slice, /) -> Self: ...
 
-    def __getitem__(self, index: Any | slice, /):
+    def __getitem__(self, index: Any | slice, /) -> Self | tuple[*ZipT]:
         data = self.data
 
         if isinstance(index, slice):
@@ -61,14 +58,14 @@ class Zip[T](BaseZip[T]):
         else:
             return tuple(map(itemgetter(index), data))
 
-    def __iter__(self, /) -> Iterator[tuple[Any]]:
+    def __iter__(self, /) -> Iterator[tuple[*ZipT]]:
         return zip(*self.data, strict=self.strict)
 
-    def __reversed__(self, /) -> Iterator[tuple[Any]]:
+    def __reversed__(self, /) -> Iterator[tuple[*ZipT]]:
         return zip(*self._reversegen(self._levels(), self.strict))
 
     @staticmethod
-    def _reversegen(levels, r, /) -> Iterator[tuple[Any]]:
+    def _reversegen(levels, r, /) -> Iterator[tuple[*ZipT]]:
         for i, (data, level) in enumerate(levels):
             data = reversed(data)
             if level:
@@ -115,7 +112,7 @@ class Zip[T](BaseZip[T]):
 
 
 @frozen(slots=True)
-class ZipLongest[T](BaseZip[T]):
+class ZipLongest[*ZipT](BaseZip):
     """Same as it.zip_longest but as a sequence."""
 
     fillvalue: Any = field(kw_only=True, default=None)
@@ -128,9 +125,9 @@ class ZipLongest[T](BaseZip[T]):
     def __getitem__(self, index: slice, /) -> Self: ...
 
     @overload
-    def __getitem__(self, index: int, /) -> tuple[Any]: ...
+    def __getitem__(self, index: int, /) -> tuple[*ZipT]: ...
 
-    def __getitem__(self, index, /):
+    def __getitem__(self, index, /) -> Self | tuple[*ZipT]:
         data = self.data
         if isinstance(index, slice):
             return type(self)(*map(partial(Slice.fromindices, slice_obj=index), data))
@@ -143,11 +140,11 @@ class ZipLongest[T](BaseZip[T]):
                 for data, level in self._levels()
             )
 
-    def __iter__(self, /):
+    def __iter__(self, /) -> Iterator[tuple[*ZipT]]:
         return zip_longest(*self.data, fillvalue=self.fillvalue)
 
     @staticmethod
-    def _reversegen(levels, default, /):
+    def _reversegen(levels, default, /) -> Iterator[tuple[*ZipT]]:
         for data, level in levels:
             data = reversed(data)
             if level:
