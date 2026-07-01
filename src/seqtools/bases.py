@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Callable, Iterator, Sequence
 from functools import partial, update_wrapper, wraps
-from typing import Any, Optional, Self, TypeVar, TypeVarTuple
+from typing import Any, Generic, Optional, Self, TypeVar, TypeVarTuple
 
 from attrs import evolve, field, frozen
 
@@ -45,8 +45,11 @@ def calcsize(func: Callable, /) -> Callable:
     return lambda self, /: func(isizes(self.data))
 
 
+T = TypeVar("T")
+
+
 @frozen
-class BaseSequence[T](Sequence):
+class BaseSequence(Sequence[T], Generic[T]):
     """Base class for all classes in this module."""
 
     __slots__ = ()
@@ -69,17 +72,14 @@ class BaseSequence[T](Sequence):
 
 base_frozen_dataclass = partial(frozen, init=False, repr=False)
 
-T = TypeVar("T")
-
 
 @base_frozen_dataclass(slots=True)
-class WithData[T](BaseSequence):
-    T = T
+class WithData[T](BaseSequence[T]):
     data: Sequence[T]
 
 
 @base_frozen_dataclass
-class Size[T](WithData):
+class Size[T](WithData[T]):
     """Base Class for sequence wrappers that transform their sequence size."""
 
     r: Sequence[int] | int
@@ -89,7 +89,7 @@ class Size[T](WithData):
 
 
 @base_frozen_dataclass
-class BaseIndexed[T](Size):
+class BaseIndexed[T](Size[T]):
     __slots__ = ()
     r: Sequence[int]
 
@@ -134,7 +134,7 @@ class BaseIndexed[T](Size):
 
 
 @base_frozen_dataclass
-class Ranged[T](BaseIndexed):
+class Ranged[T](BaseIndexed[T]):
     """Base class for classes wich uses an attribute r of type range."""
 
     __slots__ = ()
@@ -142,13 +142,13 @@ class Ranged[T](BaseIndexed):
 
 
 @base_frozen_dataclass
-class RelativeSized[T](Size):
+class RelativeSized[T](Size[T]):
     __slots__ = ()
     r: int
 
 
 @base_frozen_dataclass
-class SubSequence[T](WithData):
+class SubSequence[T](WithData[T]):
     """Base Class for sequences of sequences"""
 
     __slots__ = ()
@@ -173,7 +173,7 @@ class SubSequence[T](WithData):
 
 
 @base_frozen_dataclass
-class Combinations[T](RelativeSized, SubSequence):
+class Combinations[T](RelativeSized[T], SubSequence[T]):
     """Base Class for combinatoric sequences. A combinations subclass is a type
     of sequence that returns r-length sucessive tuples of different combinations
     of all elements in data."""

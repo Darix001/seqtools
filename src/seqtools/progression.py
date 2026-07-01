@@ -6,11 +6,11 @@ from collections.abc import Iterator, Sequence
 from decimal import Decimal
 from fractions import Fraction
 from numbers import Integral, Real
-from typing import Generic, Self, TypeVar
+from typing import Self, TypeVar
 
 from attrs import field, frozen
 
-from .bases import Ranged, WithData, slicer
+from .bases import Ranged, slicer
 from .funcs import check_step
 
 # PENDING: Reverse and Negative indices are not supported
@@ -19,9 +19,9 @@ T = TypeVar("T", int, float, Decimal, Fraction, Real, Integral)
 
 
 @frozen(slots=True)
-class BaseProgression(Ranged, Generic[T]):
+class BaseProgression[T](Ranged[T]):
     a1: T
-    data: Sequence[WithData.T] = field(init=False, repr=False)
+    data: Sequence[T] = field(init=False, repr=False)
 
     @abstractmethod
     def _unbound_index(self, number: T) -> float | int: ...
@@ -59,7 +59,7 @@ class BaseProgression(Ranged, Generic[T]):
 
 
 @frozen(order=True, slots=True)
-class ArithmeticProgression(BaseProgression):
+class ArithmeticProgression[T](BaseProgression[T]):
     """Emulates an Arithmetic Progression:
     r = A range indicating the indices of the progression.
     a1 = the first term of the progression.
@@ -118,7 +118,7 @@ class ArithmeticProgression(BaseProgression):
 
 
 @frozen(order=True, slots=True)
-class GeometricProgression(BaseProgression):
+class GeometricProgression[T](BaseProgression[T]):
     ratio: T
 
     def _getitem(self, index: int, /) -> T:

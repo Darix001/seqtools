@@ -35,9 +35,11 @@ from .comb import Permutations as permutations
 from .comb import Product
 from .enumerated import Enumerated as enumerated
 from .funcs import all_equals, cycle, get
-from .progression import ArithmeticProgression, GeometricProgression
-from .repeat import Mul, Repeats
+from .progression import ArithmeticProgression as progression
+from .progression import GeometricProgression as geometric_progression
+from .repeat import Mul as mul
 from .repeat import Repeat as repeat
+from .repeat import Repeats as repeats
 from .zip import Zip, ZipLongest
 
 TVT = TypeVarTuple("TVT")
@@ -58,34 +60,3 @@ def zip(*iterables: _zip_TVT, strict: bool = False) -> Zip[_zip_TVT]:
 def zip_longest[T](*iterables: Sequence[Any], fillvalue: Any = None) -> ZipLongest[T]:
     """Same as it.zip_longest but as a sequence."""
     return ZipLongest[T](iterables, fillvalue=fillvalue)
-
-
-def mul[T](sequence: Sequence[T], n: int) -> Mul[T]:
-    """Emulates the result of sequence * n"""
-    return Mul[T](sequence, n)
-
-
-def repeats[T](sequence: Sequence[T], n: int) -> Repeats[T]:
-    """Emulates each element in the sequence repeated n times"""
-    return Repeats[T](sequence, n)
-
-
-def progression[PROG_T](
-    a1: PROG_T, distance: PROG_T, size: int
-) -> ArithmeticProgression[PROG_T]:
-    if size < 0:
-        raise ValueError("size must be non-negative")
-    return ArithmeticProgression[PROG_T](a1, distance, range(size))
-
-
-def geometric_progression[PROG_T](
-    a1: PROG_T, ratio: PROG_T, size: int
-) -> GeometricProgression[PROG_T]:
-    if size < 0:
-        raise ValueError("size must be non-negative")
-    return GeometricProgression[PROG_T](a1, ratio, range(size))
-
-
-a = product("asdfw", repeat=12)
-for asd in a:
-    print(asd)

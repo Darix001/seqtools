@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import operator as op
 from collections import Counter, UserList
 from collections.abc import Iterator, Sequence
 from itertools import chain, islice
-from typing import Any, Self, overload
+from typing import Any, Generic, Self, TypeVar, overload
 
 from attrs import field, frozen
 from more_itertools import locate
@@ -19,19 +20,21 @@ from .bases import (
 from .funcs import getitems
 
 
-@frozen(order=True)
-class SequenceView(WithData):
+@frozen(order=True, repr=False)
+class SequenceView[T](WithData[T]):
     """Creates a protected view of a sequence."""
+
+    data: Sequence[T]
 
     __slots__ = ()
 
     @overload
-    def __getitem__(self, index: int, /) -> WithData.T: ...
+    def __getitem__(self, index: int, /) -> T: ...
 
     @overload
     def __getitem__(self, index: slice, /) -> Slice: ...
 
-    def __getitem__(self, index: int | slice, /) -> Slice | WithData.T:
+    def __getitem__(self, index: int | slice, /) -> Slice | T:
         data = self.data
         if isinstance(index, slice):
             indices = range(len(data))[index]
@@ -46,17 +49,17 @@ class SequenceView(WithData):
 
     __len__, __contains__ = UserList.__len__, UserList.__contains__
 
-    def __iter__(self, /) -> Iterator[WithData.T]:
+    def __iter__(self, /) -> Iterator[T]:
         return iter(self.data)
 
-    def __reversed__(self, /) -> Iterator[WithData.T]:
+    def __reversed__(self, /) -> Iterator[T]:
         return reversed(self.data)
 
     def __bool__(self, /) -> bool:
         return bool(self.data)
 
 
-class ReverseView(SequenceView):
+class ReverseView[T](SequenceView[T]):
     """Creates a view that emulates the given sequence in reverse order."""
 
     __slots__ = ()
@@ -70,12 +73,12 @@ class ReverseView(SequenceView):
             return super().__new__(cls)
 
     @overload
-    def __getitem__(self, index: int, /) -> WithData.T: ...
+    def __getitem__(self, index: int, /) -> T: ...
 
     @overload
     def __getitem__(self, index: slice, /) -> Slice: ...
 
-    def __getitem__(self, index: int | slice, /) -> Slice | WithData.T:
+    def __getitem__(self, index: int | slice, /) -> Slice | T:
         data = self.data
         if isinstance(index, slice):
             indices = range(len(data))[index]
@@ -95,24 +98,24 @@ class ReverseView(SequenceView):
 
 
 @frozen
-class Indexed(BaseIndexed):
+class Indexed[T](BaseIndexed[T]):
     """Emulates a sequence that is the result of collect a group of indexes of
     a determined sequence."""
 
-    r = field(alias="indices")
+    r: Sequence[int] = field(alias="indices")
 
     __slots__ = ()
 
-    def __len__(self, /):
+    def __len__(self, /) -> int:
         return len(self.r) if self.data else 0
 
-    def __iter__(self, /):
+    def __iter__(self, /) -> Iterator[T]:
         return getitems(self.data, self.r)
 
-    def __reversed__(self, /):
+    def __reversed__(self, /) -> Iterator[T]:
         return getitems(self.data, reversed(self.r))
 
-    def _getitem(self, index: int, /):
+    def _getitem(self, index: int, /) -> T:
         return self.data[index]
 
     def _getslice(self, r: Sequence[int], /):
@@ -124,12 +127,13 @@ class Indexed(BaseIndexed):
     def _count(self, obj, indices, /):
         return sum(map(Counter(indices).get, locate(self.data, obj)))
 
-    def unpack(self, /) -> Iterator:
-        return getitems(self.data, self.r)
+    def unpack(self, /) -> Sequence[T]:
+        r = self.r
+        return self.data[r.start : r.stop : r.step]
 
 
 @frozen
-class Slice(Ranged, Indexed):
+class Slice[T](Ranged[T], Indexed[T]):
     """Emulates a slice of the given sequence.
     Example:
     >> x = Slice.fromindices([1, 2, 3, 4, 5, 6, 7], 2, 5)
@@ -142,7 +146,7 @@ class Slice(Ranged, Indexed):
 
     @classmethod
     @slicer
-    def fromindices(cls, data: Sequence, slice_obj: slice, /) -> Self:
+    def fromindices(cls, data: Sequence[T], slice_obj: slice, /) -> Self:
         if isinstance(data, Slice):
             r = data.r[slice_obj]
         else:
@@ -150,7 +154,7 @@ class Slice(Ranged, Indexed):
 
         return cls(data, r)
 
-    def __reversed__(self, /):
+    def __reversed__(self, /) -> Iterator[T]:
         size = len(data := self.data)
         if start := (r := self.r).start or (step := r.step) < 0:
             return getitems(data, r)
@@ -161,7 +165,7 @@ class Slice(Ranged, Indexed):
             step,
         )
 
-    def __iter__(self, /):
+    def __iter__(self, /) -> Iterator[T]:
         r = self.r
         data = self.data
         stop, step = r.stop, r.step
@@ -178,11 +182,11 @@ class Slice(Ranged, Indexed):
                 start = 0
         return islice(gen, start, stop, step)
 
-    def _contains(self, value, indices, /):
+    def _contains(self, value, indices, /) -> bool:
         try:
             return self.data.index(value, indices.start, indices.stop) in indices
         except ValueError:
-            pass
+            return False
         except TypeError:
             return value in iter(self)
 
@@ -213,9 +217,8 @@ class Slice(Ranged, Indexed):
             )
         raise self.value_error(value)
 
-    # peging
     def _count(self, value, r: range, /) -> int:
-        return self.data.count(value, r.start, r.stop)
+        return op.countOf(type(self)(self.data, r), value)
 
-    def unpack(self, /) -> Sequence[WithData.T]:
+    def unpack(self, /) -> Sequence[T]:
         return self.data[(r := self.r).start : r.stop : r.step]

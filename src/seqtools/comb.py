@@ -36,13 +36,13 @@ def nwise_contains_or_count_deco(func, /):
     return function
 
 
-class Nwise(Combinations):
+class Nwise[T](Combinations[T]):
     """Emulates tuples of every r elements of data."""
 
-    def _getitem(self, index, data, r, /) -> Sequence:
+    def _getitem(self, index, data, r, /) -> tuple[T, ...]:
         if len(res := data[index : index + r]) != r:
             raise self.index_error()
-        return res
+        return tuple(res)
 
     def iterfunc(reverse, /):
         def __iter__(self, /):
@@ -68,13 +68,13 @@ class Nwise(Combinations):
 
         return __iter__
 
-    def __len__(self, /):
+    def __len__(self, /) -> int:
         return len(self.data) - (self.r - 1) if self else 0
 
-    def __bool__(self, /):
+    def __bool__(self, /) -> bool:
         return self.r <= len(self.data)
 
-    def _index(self, value, start, stop, /):  # Pending implementation
+    def _index(self, value, start, stop, /) -> int:  # Pending implementation
         return super().index(value, start, stop)
 
     _count = nwise_contains_or_count_deco(sum)
@@ -87,10 +87,10 @@ def product_contains_count_fn(func, fmap, /):
 
 
 @frozen
-class Product[T](Combinations):
+class Product[T](Combinations[T]):
     """Same as it.product but acts as a sequence."""
 
-    data: tuple[Sequence[T], ...]
+    data: Sequence[Sequence[T]]
     r: int = field(kw_only=True, default=1)
 
     def __bool__(self, /) -> bool:
@@ -186,22 +186,22 @@ class Product[T](Combinations):
 
     @classmethod
     def from_args(cls, /, *args: Sequence[T], repeat: int = 1) -> Self:
-        return cls(*args, r=repeat)
+        return cls(args, r=repeat)
 
 
-class Permutations(Combinations):
+class Permutations[T](Combinations[T]):
     __slots__ = ()
     r: int | None
 
-    def __init__(self, /, data: Sequence, r: int | None = None):
+    def __init__(self, /, data: Sequence[T], r: int | None = None):
         if r is not None and r < 0:
             raise ValueError("r must be non-negative")
         super().__init__(data, r)
 
-    def __len__(self, /):
+    def __len__(self, /) -> int:
         return perm(len(self.data), self.r)
 
-    def _getitem(self, index, data, r, /):
+    def _getitem(self, index, data, r, /) -> tuple[T, ...]:
         # Code grabbed from more_itertools.nth_permutation
         if r is None or r == (n := len(data)):
             r, c = n, factorial(n)
@@ -220,7 +220,7 @@ class Permutations(Combinations):
             if not q:
                 break
 
-        return getitems(data, map(sub, result, mr))
+        return tuple(getitems(data, map(sub, result, mr)))
 
 
 del pairwise, mul, accumulate

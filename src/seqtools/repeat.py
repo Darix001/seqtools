@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from itertools import repeat
 from operator import attrgetter
-from typing import Any, Self, TypeVar
+from typing import Any, Self
 
 from attrs import field, frozen
 
@@ -11,16 +11,13 @@ from .funcs import from_iterable, map_repeat, reverse_all
 div_index = {0, -1}.__contains__
 
 
-V = TypeVar("V")
-
-
 def pos_range(r: int) -> range:
     """Returns range(r). If r is a negative number, returns range(0)"""
     return range(0 if r < 0 else r)
 
 
 @frozen
-class Repeat[V](Ranged):
+class Repeat[V](Ranged[V]):
     """Same as it.repeat but as a sequence."""
 
     data: V
@@ -67,7 +64,7 @@ class Repeat[V](Ranged):
 
 
 @frozen
-class Mul(RelativeSized):
+class Mul[T](RelativeSized[T]):
     """Emulates a data sequence repeated r times.
     Example:
         a = Mul(range(2), 3)
@@ -78,7 +75,7 @@ class Mul(RelativeSized):
     r: int
     __slots__ = ()
 
-    def __new__(cls, data: Sequence[WithData.T], r: int):
+    def __new__(cls, data: Sequence[T], r: int):
         if isinstance(data, cls):
             r *= data.r
             data = data.data
@@ -89,8 +86,8 @@ class Mul(RelativeSized):
 
     def __add__(self, value, /):
         if type(self) is type(value):
-            if (data := self.data) == data.data:
-                return self._replace(r=self.r + data.r)
+            if (data := self.data) == value.data:
+                return self._replace(r=self.r + value.r)
         return NotImplemented
 
     def __getitem__(self, index, /):
@@ -108,10 +105,10 @@ class Mul(RelativeSized):
     def __contains__(self, value, /):
         return True if self.r and (value in self.data) else False
 
-    def __iter__(self, /) -> Iterator[WithData.T]:
+    def __iter__(self, /) -> Iterator[T]:
         return from_iterable(repeat(self.data, self.r))
 
-    def __reversed__(self, /) -> Iterator[WithData.T]:
+    def __reversed__(self, /) -> Iterator[T]:
         return from_iterable(reverse_all(repeat(self.data, self.r)))
 
     def count(self, value, /) -> int:
@@ -132,32 +129,31 @@ class Mul(RelativeSized):
 
 
 @frozen
-class Repeats(Mul):
+class Repeats[T](Mul[T]):
     """Emulates a sequence with each elements repeated r times."""
 
     __slots__ = ()
 
-    def __mul__(self, n, /):
+    def __mul__(self, n, /) -> Mul:
         return Mul(self, n)
 
-    def __getitem__(self, index, /):
+    def __getitem__(self, index, /) -> T:
         if r := self.r:
             return self.data[index // r]
         else:
             raise self.index_error()
 
-    def iterfunc(reverse, /):
-        def __iter__(self, /):
-            data = self.data
-            if reverse:
-                data = reversed(data)
-            return from_iterable(map_repeat(data, repeat(self.r)))
+    def __iter__(self, /) -> Iterator[T]:
+        data = self.data
+        return from_iterable(map_repeat(data, repeat(self.r)))
 
-        return __iter__
+    def __reversed__(self, /) -> Iterator[T]:
+        data = reversed(self.data)
+        return from_iterable(map_repeat(data, repeat(self.r)))
 
     def index(self, value, start=0, stop: OPINT = None, /) -> int:
         if not (r := self.r):
-            raise self.data_error(value)
+            raise self.value_error(value)
 
         index = self.data.index
 

@@ -1,14 +1,15 @@
+from collections.abc import Iterator
 from itertools import accumulate, chain, pairwise
 from operator import methodcaller
-from typing import Any
+from typing import Any, Self, overload
 
-from .bases import NS, OPINT, Sequence, WithData, calcsize, datamethod
+from .bases import OPINT, Sequence, WithData, calcsize, datamethod
 from .funcs import isizes
 
 from_iterable = chain.from_iterable
 
 
-class Chain(WithData):
+class Chain[T](WithData[T]):
     """Same as it.chain but as a sequence.
     Emulates a Sequence that is the results of the concatenation of multiple sequences.
     This class can emulate the concatenation of sequences of multiple classes.
@@ -23,7 +24,7 @@ class Chain(WithData):
     """
 
     __slots__ = ()
-    data: tuple[Sequence]
+    data: Sequence[Sequence[T]]
 
     __len__ = calcsize(sum)
 
@@ -36,7 +37,13 @@ class Chain(WithData):
                 sequences[i : i + 1] = value.data
         self._setattr("data", tuple(sequences))
 
-    def __getitem__(self, index, /):
+    @overload
+    def __getitem__(self, index: int, /) -> T: ...
+
+    @overload
+    def __getitem__(self, index: slice, /) -> Self: ...
+
+    def __getitem__(self, index, /) -> T | Self:
         data = self.data
         if type(index) is not slice:
             if index < 0:
@@ -73,14 +80,15 @@ class Chain(WithData):
 
         return type(self)(*values)
 
-    __iter__ = datamethod(from_iterable)
+    def __iter__(self, /) -> Iterator[T]:
+        return from_iterable(self.data)
 
-    def __reversed__(self, /):
+    def __reversed__(self, /) -> Iterator[T]:
         return from_iterable(map(reversed, reversed(self.data)))
 
     def __add__(self, value, /):
         if type(self) is type(value):
-            self = self.fromsequence(self.data)
+            self = self.from_sequence(self.data)
             self.data += value.data
             return value
         return NotImplemented
@@ -123,7 +131,7 @@ class Chain(WithData):
         raise self.value_error(value)
 
     @classmethod
-    def from_sequence(cls, data: NS, /):
+    def from_sequence(cls, data: Sequence[Sequence[T]], /):
         (self := cls())._setattr("data", data)
         return self
 
