@@ -36,7 +36,8 @@ from .comb import Product
 from .enumerated import Enumerated as enumerated
 from .funcs import all_equals, cycle, get
 from .progression import ArithmeticProgression, GeometricProgression
-from .repeat import Mul, Repeat, Repeats
+from .repeat import Mul, Repeats
+from .repeat import Repeat as repeat
 from .zip import Zip, ZipLongest
 
 TVT = TypeVarTuple("TVT")
@@ -57,11 +58,6 @@ def zip(*iterables: _zip_TVT, strict: bool = False) -> Zip[_zip_TVT]:
 def zip_longest[T](*iterables: Sequence[Any], fillvalue: Any = None) -> ZipLongest[T]:
     """Same as it.zip_longest but as a sequence."""
     return ZipLongest[T](iterables, fillvalue=fillvalue)
-
-
-def repeat[V](object: Any, times: int) -> Repeat[V]:
-    """Same as it.repeat but as a sequence."""
-    return Repeat[V](object, times)
 
 
 def mul[T](sequence: Sequence[T], n: int) -> Mul[T]:
