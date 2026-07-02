@@ -1,23 +1,22 @@
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from functools import partial
-from itertools import accumulate, chain, islice, pairwise, repeat, tee
+from itertools import accumulate, batched, chain, islice, pairwise, repeat, tee
 from math import factorial, perm, prod, sumprod, trunc
 from operator import eq, floordiv, indexOf, methodcaller, mul, sub
-from typing import Any, Generic, Unpack
+from typing import Any, Generic, TypeVarTuple, Unpack
 
 from attrs import field, frozen
 
-from .bases import TS, TVT, Combinations, Sequence
+from .bases import Combinations, Sequence
 from .funcs import (
     cycle,
     efficient_nwise,
-    get_sizes,
     getitems,
+    isizes,
     map_repeat,
     reverse_all,
 )
-from .repeat import Mul
 
 cumprod = partial(accumulate, func=mul, initial=1)
 
@@ -37,10 +36,10 @@ def nwise_contains_or_count_deco(func, /):
     return function
 
 
-class Nwise(Combinations):
+class Nwise[T](Combinations[T]):
     """Emulates tuples of every r elements of data."""
 
-    def _getitem(self, index, data, r, /) -> Sequence:
+    def _getitem(self, index, data, r, /) -> Sequence[T]:
         if len(res := data[index : index + r]) != r:
             raise self.index_error()
         return res
@@ -69,14 +68,11 @@ class Nwise(Combinations):
 
         return __iter__
 
-    def __len__(self, /):
+    def __len__(self, /) -> int:
         return len(self.data) - (self.r - 1) if self else 0
 
-    def __bool__(self, /):
+    def __bool__(self, /) -> bool:
         return self.r <= len(self.data)
-
-    def _index(self, value, start, stop, /):  # Pending implementation
-        return super().index(value, start, stop)
 
     _count = nwise_contains_or_count_deco(sum)
 
@@ -87,17 +83,24 @@ def product_contains_count_fn(func, fmap, /):
     return lambda self, value, /: func(fmap(self.data * self.r, value))
 
 
+TProd = TypeVarTuple("TProd")
+
+
 @frozen
-class Product(Combinations, Generic[Unpack[TVT]]):
+class Product(Combinations, Generic[Unpack[TProd]]):
     """Same as it.product but acts as a sequence."""
 
-    data: tuple[Unpack[TVT]]
+    data: tuple[Sequence[Any]]
     r: int = field(kw_only=True, default=1)
 
-    def __bool__(self, /):
+    def __init__(self, *data: tuple[Sequence[Any]], repeat: int = 1):
+        self._setattr("data", data)
+        self._setattr("r", repeat)
+
+    def __bool__(self, /) -> bool:
         return all(data) if (data := self.data) else True
 
-    def _getitem(self, index, data, r, /):
+    def _getitem(self, index, data, r, /) -> Iterable[*TProd]:
         # Code grabbed from more_itertools.nth_permutation
         index = range(len(self))[index]
         values = []
@@ -108,81 +111,97 @@ class Product(Combinations, Generic[Unpack[TVT]]):
 
         return reversed(values)
 
-    def __len__(self, /):
+    def __len__(self, /) -> int:
         return prod(self.sizes) ** self.r
 
     @property
     def sizes(self, /) -> Iterator[int]:
-        return get_sizes(self.data)
+        return isizes(self.data)
 
-    def iterfunc(reverse, /):
+    def __iter__(self, /) -> Iterator[tuple[*TProd]]:
+        if not (data := self.data) or not (r := self.r):
+            return iter(((),))
 
-        def __iter__(self, /):
-            if not (data := self.data) or not (r := self.r):
-                return iter(((),))
+        elif not all(data):
+            return EMPTY_ITER
 
-            elif not all(data):
-                return EMPTY_ITER
+        datas = cycle(data)
+        nargs = len(data) * r
+        *count, n = cumprod(islice(sizes := isizes(datas), nargs))
+        times = [*map(floordiv, map(floordiv, repeat(n), sizes), count)]
+        first, *values = islice(datas, nargs)
 
-            datas = cycle(data)
-            nargs = len(data) * r
-            *count, n = cumprod(islice(sizes := get_sizes(datas), nargs))
-            times = [*map(floordiv, map(floordiv, repeat(n), sizes), count)]
-            first, *values = islice(datas, nargs)
+        del count[0]
 
-            del count[0]
+        data = map(repeat, values, count)
 
-            data = map(repeat, values, count)
+        values[:] = map(chain.from_iterable, data)
+        values.insert(0, first)
+        values[:-1] = map(
+            chain.from_iterable, map(map_repeat, values[:-1], map_repeat(times))
+        )
 
-            if reverse:
-                first = reversed(first)
-                data = map(reverse_all, data)
+        return zip(*values)
 
-            values[:] = map(chain.from_iterable, data)
-            values.insert(0, first)
-            values[:-1] = map(
-                chain.from_iterable, map(map_repeat, values[:-1], map_repeat(times))
-            )
+    def __reversed__(self, /) -> Iterator[tuple[*TProd]]:
+        if not (data := self.data) or not (r := self.r):
+            return iter(((),))
 
-            return zip(*values)
+        elif not all(data):
+            return EMPTY_ITER
 
-        return __iter__
+        datas = cycle(data)
+        nargs = len(data) * r
+        *count, n = cumprod(islice(sizes := isizes(datas), nargs))
+        times = [*map(floordiv, map(floordiv, repeat(n), sizes), count)]
+        first, *values = islice(datas, nargs)
+
+        del count[0]
+
+        data = map(repeat, values, count)
+
+        first = reversed(first)
+        data = map(reverse_all, data)
+
+        values[:] = map(chain.from_iterable, data)
+        values.insert(0, first)
+        values[:-1] = map(
+            chain.from_iterable, map(map_repeat, values[:-1], map_repeat(times))
+        )
+
+        return zip(*values)
 
     def _check(self, value, /) -> bool:
         return type(value) is tuple and (len(value) // self.r) == len(self.data)
 
     def _its(self, /):
         datas, datas2 = tee(cycle(self.data, self.r))
-        return datas, get_sizes(datas2)
+        return datas, isizes(datas2)
 
-    def _index(self, value, start, stop, /) -> int:
-        datas, sizes = self._its()
-        return trunc(sumprod(map(indexOf, datas, value), cumprod(sizes)))
+    def index(self, value, /) -> int:
+        if self._check(value):
+            datas, sizes = self._its()
+            return trunc(sumprod(map(indexOf, datas, value), cumprod(sizes)))
+        else:
+            raise self.value_error(value)
 
-    def _contains(self, obj: Any):
+    def _contains(self, obj: Any) -> bool:
         return all(map(methodcaller("__contains__", obj), self.data))
 
-    def _count(self, obj: Any):
+    def _count(self, obj: Any) -> int:
         return prod(map(methodcaller("count", obj), self.data))
 
-    @classmethod
-    def fromargs(cls, /, *args, repeat=1):
-        return cls(*args, r=repeat)
 
-
-class Permutations(Combinations):
+@frozen
+class Permutations[T](Combinations[T]):
     __slots__ = ()
-    r: int | None
+    r: int | None = field(validator=lambda r: r is None or r >= 0)
 
-    def __init__(self, /, data: Sequence, r: int | None = None):
-        if r is not None and r < 0:
-            raise ValueError("r must be non-negative")
-        super().__init__(data, r)
-
-    def __len__(self, /):
+    # An implementation efficient for __iter__ is missing.
+    def __len__(self, /) -> int:
         return perm(len(self.data), self.r)
 
-    def _getitem(self, index, data, r, /):
+    def _getitem(self, index, data, r, /) -> Iterable[T]:
         # Code grabbed from more_itertools.nth_permutation
         if r is None or r == (n := len(data)):
             r, c = n, factorial(n)
@@ -202,6 +221,27 @@ class Permutations(Combinations):
                 break
 
         return getitems(data, map(sub, result, mr))
+
+
+@frozen(order=True)
+class Batched[T](Combinations[T]):
+    __slots__ = ()
+
+    def _getitem(
+        self,
+        index,
+        data,
+        r,
+    ) -> Iterable[T]:
+        if not (res := data[index * r : (index + (r - 1)) * r]):
+            raise self.index_error()
+        return res
+
+    def __iter__(self, /):
+        return batched(self.data, self.r)
+
+    def __len__(self, /):
+        return round(len(self.data) / self.r)
 
 
 del pairwise, mul, accumulate
