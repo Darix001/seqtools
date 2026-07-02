@@ -178,9 +178,12 @@ class Product(Combinations, Generic[Unpack[TProd]]):
         datas, datas2 = tee(cycle(self.data, self.r))
         return datas, isizes(datas2)
 
-    def _index(self, value, start, stop, /) -> int:
-        datas, sizes = self._its()
-        return trunc(sumprod(map(indexOf, datas, value), cumprod(sizes)))
+    def index(self, value, /) -> int:
+        if self._check(value):
+            datas, sizes = self._its()
+            return trunc(sumprod(map(indexOf, datas, value), cumprod(sizes)))
+        else:
+            raise self.value_error(value)
 
     def _contains(self, obj: Any) -> bool:
         return all(map(methodcaller("__contains__", obj), self.data))

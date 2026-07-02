@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from functools import partial, update_wrapper, wraps
+from sys import maxsize
 from typing import Any, Generic, Optional, Self, TypeVar, TypeVarTuple, overload
 
 from attrs import evolve, field, frozen
@@ -172,7 +173,7 @@ class SubSequence[T](WithData[T]):
     def __contains__(self, value, /):
         return self._check(value) and self._contains(value)
 
-    def index(self, value, /, start: int = 0, stop: int = ...) -> int:
+    def index(self, value, /, start: int = 0, stop: int = maxsize) -> int:
         if self._check(value):
             return self._index(value, start, stop)
         else:
