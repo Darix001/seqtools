@@ -79,7 +79,7 @@ class Mul[T](RelativeSized[T]):
         if isinstance(data, cls):
             r *= data.r
             data = data.data
-        return super().__new__(cls)
+        return super().__new__(cls, data, r)
 
     def __mul__(self, r, /):
         return self._replace(r=self.r * r)
