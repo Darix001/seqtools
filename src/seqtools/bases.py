@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from functools import partial, update_wrapper, wraps
-from typing import Any, Generic, Optional, Self, TypeVar, TypeVarTuple
+from typing import Any, Generic, Optional, Self, TypeVar, TypeVarTuple, overload
 
 from attrs import evolve, field, frozen
 
@@ -15,7 +15,9 @@ TS = tuple[Sequence[Any]]
 TVT = TypeVarTuple("Ts")
 
 
-def boolen(func, FALSIES={"__bool__": False, "__len__": 0}, /):
+def boolen(
+    func, FALSIES={"__bool__": False, "__len__": 0}, /
+) -> Callable[..., bool | int]:
     value = FALSIES[func.__name__]
 
     @wraps(func)
@@ -32,16 +34,16 @@ def checker(cls, /) -> Callable[..., bool]:
     return lambda self, obj, /: type(obj) is cls and len(obj) == self.r
 
 
-def slicer(func: Callable, /) -> Callable:
+def slicer[T](func: Callable[[Any, slice], T], /) -> Callable[..., T]:
     """Decorator for functions wich accepts one argument and range arguments"""
     return update_wrapper(lambda obj, /, *args: func(obj, slice(*args)), func)
 
 
-def datamethod(func: Callable, /) -> Callable:
+def datamethod[T](func: Callable[[Sequence], T], /) -> Callable[..., T]:
     return lambda self, /: func(self.data)
 
 
-def calcsize(func: Callable, /) -> Callable:
+def calcsize(func: Callable[[Iterable[int]], int], /) -> Callable[..., int]:
     return lambda self, /: func(isizes(self.data))
 
 
@@ -94,21 +96,29 @@ class BaseIndexed[T](Size[T]):
     r: Sequence[int]
 
     @abstractmethod
-    def _getitem(self, index, /): ...
+    def _getitem(self, index, /) -> T: ...
 
     @abstractmethod
-    def _getslice(self, r, /): ...
+    def _getslice(self, r, /) -> Self: ...
 
     @abstractmethod
-    def _count(self, obj, indices, /): ...
+    def _count(self, obj, indices, /) -> int: ...
 
     @abstractmethod
-    def _index(self, obj, indices, /): ...
+    def _index(self, obj, indices, /) -> int: ...
 
     @abstractmethod
-    def _contains(self, obj, indices, /): ...
+    def _contains(self, obj, indices, /) -> bool: ...
 
-    def __getitem__(self, index, /):
+    @overload
+    def __getitem__(self, index: int, /) -> T:
+        pass
+
+    @overload
+    def __getitem__(self, index: slice, /) -> Self:
+        pass
+
+    def __getitem__(self, index: int | slice, /) -> T | Self:
         if type(r := self.r[index]) is int:
             return self._getitem(r)
         else:
@@ -181,10 +191,10 @@ class Combinations[T](RelativeSized[T], SubSequence[T]):
     __slots__ = ()
 
     @abstractmethod
-    def _getitem(self, index, data, r): ...
+    def _getitem(self, index, data, r) -> Iterable[T]: ...
 
     def __bool__(self, /):
         return not (r := self.r) or len(self.data) >= r
 
-    def __getitem__(self, index, /):
+    def __getitem__(self, index, /) -> tuple[T, ...]:
         return tuple(self._getitem(index, self.data, self.r))

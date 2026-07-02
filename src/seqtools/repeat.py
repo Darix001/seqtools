@@ -5,7 +5,7 @@ from typing import Any, Self
 
 from attrs import field, frozen
 
-from .bases import OPINT, Ranged, RelativeSized, Sequence, WithData
+from .bases import OPINT, Ranged, RelativeSized, Sequence
 from .funcs import from_iterable, map_repeat, reverse_all
 
 div_index = {0, -1}.__contains__
@@ -86,7 +86,7 @@ class Mul[T](RelativeSized[T]):
 
     def __add__(self, value, /):
         if type(self) is type(value):
-            if (data := self.data) == value.data:
+            if self.data == value.data:
                 return self._replace(r=self.r + value.r)
         return NotImplemented
 
@@ -122,7 +122,7 @@ class Mul[T](RelativeSized[T]):
             div, start = divmod(start, r)
             if div_index(div):
                 return index(value, start, stop % r if stop else r)
-        raise self.data_error(value)
+        raise self.value_error(value)
 
     def unpack(self, /) -> Sequence:
         return self.data * self.r

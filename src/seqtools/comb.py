@@ -1,10 +1,10 @@
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from functools import partial
-from itertools import accumulate, chain, islice, pairwise, repeat, tee
+from itertools import accumulate, batched, chain, islice, pairwise, repeat, tee
 from math import factorial, perm, prod, sumprod, trunc
 from operator import eq, floordiv, indexOf, methodcaller, mul, sub
-from typing import Any, Self
+from typing import Any, Generic, TypeVarTuple, Unpack
 
 from attrs import field, frozen
 
@@ -39,10 +39,10 @@ def nwise_contains_or_count_deco(func, /):
 class Nwise[T](Combinations[T]):
     """Emulates tuples of every r elements of data."""
 
-    def _getitem(self, index, data, r, /) -> tuple[T, ...]:
+    def _getitem(self, index, data, r, /) -> Sequence[T]:
         if len(res := data[index : index + r]) != r:
             raise self.index_error()
-        return tuple(res)
+        return res
 
     def iterfunc(reverse, /):
         def __iter__(self, /):
@@ -86,17 +86,24 @@ def product_contains_count_fn(func, fmap, /):
     return lambda self, value, /: func(fmap(self.data * self.r, value))
 
 
+TProd = TypeVarTuple("TProd")
+
+
 @frozen
-class Product[T](Combinations[T]):
+class Product(Combinations, Generic[Unpack[TProd]]):
     """Same as it.product but acts as a sequence."""
 
-    data: Sequence[Sequence[T]]
+    data: tuple[Sequence[Any]]
     r: int = field(kw_only=True, default=1)
+
+    def __init__(self, *data: tuple[Sequence[Any]], repeat: int = 1):
+        self._setattr("data", data)
+        self._setattr("r", repeat)
 
     def __bool__(self, /) -> bool:
         return all(data) if (data := self.data) else True
 
-    def _getitem(self, index, data, r, /) -> tuple[T, ...]:
+    def _getitem(self, index, data, r, /) -> Iterable[*TProd]:
         # Code grabbed from more_itertools.nth_permutation
         index = range(len(self))[index]
         values = []
@@ -105,7 +112,7 @@ class Product[T](Combinations[T]):
             index, mod = divmod(index, size)
             values.append(data[mod])
 
-        return tuple(reversed(values))
+        return reversed(values)
 
     def __len__(self, /) -> int:
         return prod(self.sizes) ** self.r
@@ -114,7 +121,7 @@ class Product[T](Combinations[T]):
     def sizes(self, /) -> Iterator[int]:
         return isizes(self.data)
 
-    def __iter__(self, /) -> Iterator[tuple[T, ...]]:
+    def __iter__(self, /) -> Iterator[tuple[*TProd]]:
         if not (data := self.data) or not (r := self.r):
             return iter(((),))
 
@@ -139,7 +146,7 @@ class Product[T](Combinations[T]):
 
         return zip(*values)
 
-    def __reversed__(self, /) -> Iterator[tuple[T, ...]]:  # Pending
+    def __reversed__(self, /) -> Iterator[tuple[*TProd]]:  # Pending
         if not (data := self.data) or not (r := self.r):
             return iter(((),))
 
@@ -184,24 +191,16 @@ class Product[T](Combinations[T]):
     def _count(self, obj: Any) -> int:
         return prod(map(methodcaller("count", obj), self.data))
 
-    @classmethod
-    def from_args(cls, /, *args: Sequence[T], repeat: int = 1) -> Self:
-        return cls(args, r=repeat)
 
-
+@frozen
 class Permutations[T](Combinations[T]):
     __slots__ = ()
-    r: int | None
-
-    def __init__(self, /, data: Sequence[T], r: int | None = None):
-        if r is not None and r < 0:
-            raise ValueError("r must be non-negative")
-        super().__init__(data, r)
+    r: int | None = field(validator=lambda r: r is None or r >= 0)
 
     def __len__(self, /) -> int:
         return perm(len(self.data), self.r)
 
-    def _getitem(self, index, data, r, /) -> tuple[T, ...]:
+    def _getitem(self, index, data, r, /) -> Iterable[T]:
         # Code grabbed from more_itertools.nth_permutation
         if r is None or r == (n := len(data)):
             r, c = n, factorial(n)
@@ -220,7 +219,28 @@ class Permutations[T](Combinations[T]):
             if not q:
                 break
 
-        return tuple(getitems(data, map(sub, result, mr)))
+        return getitems(data, map(sub, result, mr))
+
+
+@frozen(order=True)
+class Batched[T](Combinations[T]):
+    __slots__ = ()
+
+    def _getitem(
+        self,
+        index,
+        data,
+        r,
+    ) -> Iterable[T]:
+        if not (res := data[index * r : (index + (r - 1)) * r]):
+            raise self.index_error()
+        return res
+
+    def __iter__(self, /):
+        return batched(self.data, self.r)
+
+    def __len__(self, /):
+        return round(len(self.data) / self.r)
 
 
 del pairwise, mul, accumulate
