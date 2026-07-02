@@ -13,8 +13,6 @@ from attrs import field, frozen
 from .bases import Ranged, slicer
 from .funcs import check_step
 
-# PENDING: Reverse and Negative indices are not supported
-
 T = TypeVar("T", int, float, Decimal, Fraction, Real, Integral)
 
 

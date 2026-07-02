@@ -74,9 +74,6 @@ class Nwise[T](Combinations[T]):
     def __bool__(self, /) -> bool:
         return self.r <= len(self.data)
 
-    def _index(self, value, start, stop, /) -> int:  # Pending implementation
-        return super().index(value, start, stop)
-
     _count = nwise_contains_or_count_deco(sum)
 
     _contains = nwise_contains_or_count_deco(any)
@@ -146,7 +143,7 @@ class Product(Combinations, Generic[Unpack[TProd]]):
 
         return zip(*values)
 
-    def __reversed__(self, /) -> Iterator[tuple[*TProd]]:  # Pending
+    def __reversed__(self, /) -> Iterator[tuple[*TProd]]:
         if not (data := self.data) or not (r := self.r):
             return iter(((),))
 
@@ -197,6 +194,7 @@ class Permutations[T](Combinations[T]):
     __slots__ = ()
     r: int | None = field(validator=lambda r: r is None or r >= 0)
 
+    # An implementation efficient for __iter__ is missing.
     def __len__(self, /) -> int:
         return perm(len(self.data), self.r)
 

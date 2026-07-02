@@ -1,4 +1,4 @@
-from collections.abc import Iterator  # pending for annotations
+from collections.abc import Iterator
 from dataclasses import field
 from functools import partial
 from itertools import chain, islice, repeat, zip_longest
