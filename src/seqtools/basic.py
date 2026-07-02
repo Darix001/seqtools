@@ -4,7 +4,7 @@ import operator as op
 from collections import Counter, UserList
 from collections.abc import Iterator, Sequence
 from itertools import chain, islice
-from typing import Any, Generic, Self, TypeVar, overload
+from typing import Any, Self, overload
 
 from attrs import field, frozen
 from more_itertools import locate
