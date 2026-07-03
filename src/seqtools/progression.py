@@ -21,13 +21,13 @@ class BaseProgression[T](Ranged[T]):
     data: Sequence[T] = field(init=False, repr=False)
 
     @abstractmethod
-    def _unbound_index(self, number: T) -> float | int: ...
+    def unbound_index(self, number: T) -> int: ...
 
     @abstractmethod
     def _sliced(self, r: range, /) -> Self: ...
 
     def _contains(self, number, /):
-        return self._unbound_index(number) in self.r
+        return self.unbound_index(number) in self.r
 
     @property
     def an(self, /) -> T:
@@ -43,10 +43,10 @@ class BaseProgression[T](Ranged[T]):
             return self.clear()
 
     def _count(self, number: T, r: range, /) -> int:
-        return r.count(self._unbound_index(number))
+        return r.count(self.unbound_index(number))
 
     def _index(self, number: T, r: range, /) -> int:
-        return r.index(self._unbound_index(number))
+        return r.index(self.unbound_index(number))
 
 
 @frozen(order=True, slots=True)
@@ -72,8 +72,11 @@ class ArithmeticProgression[T](BaseProgression[T]):
     def _getitem(self, index: int, /) -> T:
         return self.a1 + (index * self.distance)
 
-    def _unbound_index(self, number: T, /) -> T:
-        return (number - self.a1) / self.distance
+    def unbound_index(self, number: T, /) -> int:
+        if (index := (number - self.a1) / self.distance) % 1:
+            return math.trunc(index)
+        else:
+            return -1
 
     def __iter__(self, /) -> Iterator[T]:
         return it.islice(it.count(self.a1, self.distance), len(self))
@@ -113,11 +116,14 @@ class GeometricProgression[T](BaseProgression[T]):
             it.repeat(self.ratio, len(self.r) - 1), op.floordiv, initial=self.an
         )
 
-    def _unbound_index(self, number: T, /) -> float | int:
-        return math.log(number / self.a1, self.ratio)
+    def unbound_index(self, number: T, /) -> int:
+        if (index := math.log(number / self.a1, self.ratio)).is_integer():
+            return math.trunc(index)
+        else:
+            return -1
 
     def index(self, number: T, /) -> int:
-        return self.r.index(self._unbound_index(number))
+        return self.r.index(self.unbound_index(number))
 
     def sum(self, /) -> T:
         return (self.a1 * (1 - self.ratio ** len(self))) / (1 - self.ratio)

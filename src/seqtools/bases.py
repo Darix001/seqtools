@@ -30,6 +30,10 @@ def boolen(
     return function
 
 
+def pos_range(r: int, /) -> range:
+    return range(r if r >= 0 else 0)
+
+
 def checker(cls, /) -> Callable[..., bool]:
     """Creates a Check method for SubSequence subclasses"""
     return lambda self, obj, /: type(obj) is cls and len(obj) == self.r
