@@ -20,11 +20,9 @@ from .bases import (
 from .funcs import getitems
 
 
-@frozen(order=True, repr=False)
+@frozen(order=True)
 class SequenceView[T](WithData[T]):
     """Creates a protected view of a sequence."""
-
-    data: Sequence[T]
 
     __slots__ = ()
 
