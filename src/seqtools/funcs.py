@@ -28,7 +28,7 @@ def infinite_zip(*sequences: Sequence[Any]) -> Iterator[tuple[Any, ...]]:
     return zip(*map(cycle, sequences))
 
 
-def swap(data: MutableSequence, indices: Iterable[int]) -> None:
+def swap(data: MutableSequence[Any], indices: Iterable[int]) -> None:
     values = op.itemgetter(*indices)(data)
     for index, value in zip(indices, reversed(values)):
         data[index] = value
@@ -87,7 +87,7 @@ def get(data: Sequence[T], index: int, default: D = None, /) -> T | D:
         return default
 
 
-def all_equals(data: Sequence, /) -> bool:
+def all_equals(data: Sequence[Any], /) -> bool:
     """Returns True if all items on sequence are equals"""
     return data.count(data[0]) == len(data)
 
