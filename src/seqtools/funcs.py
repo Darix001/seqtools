@@ -3,7 +3,7 @@ from collections import deque
 from collections.abc import Generator, Iterable, Iterator, MutableSequence, Sequence
 from functools import partial
 from itertools import chain, islice, repeat
-from typing import Any, Optional, TypeVar
+from typing import Any, Optional
 
 from_iterable = chain.from_iterable
 mapper = partial(partial, map)
