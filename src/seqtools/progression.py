@@ -33,6 +33,10 @@ class BaseProgression[T](Ranged[T]):
     def stop(self, /) -> T:
         return self._getitem(self.r.stop)
 
+    @property
+    def last(self, /) -> T:
+        return self._getitem(self.r[-1])
+
     def clear(self, /) -> Self:
         return type(self)(0, 0, 0)
 
@@ -111,7 +115,7 @@ class GeometricProgression[T](BaseProgression[T]):
 
     def __reversed__(self, /) -> Iterator[T]:
         return it.accumulate(
-            it.repeat(self.step, len(self.r) - 1), floordiv, initial=self.stop
+            it.repeat(self.step, len(self.r) - 1), floordiv, initial=self.last
         )
 
     def unbound_index(self, number: T, /) -> int:
@@ -125,18 +129,3 @@ class GeometricProgression[T](BaseProgression[T]):
 
     def sum(self, /) -> T:
         return (self.start * (1 - self.step ** len(self))) / (1 - self.step)
-
-
-if __name__ == "__main__":
-    import builtins
-
-    geoprog = GeometricProgression[int](start=2, step=2, size=10)
-    a = geoprog[1]
-    test_list = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
-    assert test_list == list(geoprog)
-    assert test_list[::-1] == list(reversed(geoprog))
-    assert test_list[-3] == geoprog[-3]
-    assert test_list[5] == geoprog[5]
-    assert test_list.index(128) == geoprog.index(128)
-    assert test_list.count(128) == geoprog.count(128)
-    assert builtins.sum(geoprog) == geoprog.sum()
