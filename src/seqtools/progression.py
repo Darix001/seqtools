@@ -73,9 +73,9 @@ class ArithmeticProgression[T](BaseProgression[T]):
 
     def unbound_index(self, number: T, /) -> int:
         if (index := (number - self.start) / self.step) % 1:
-            return trunc(index)
-        else:
             return -1
+        else:
+            return trunc(index)
 
     def __iter__(self, /) -> Iterator[T]:
         return it.islice(it.count(self.start, self.step), len(self))
