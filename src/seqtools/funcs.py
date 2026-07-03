@@ -13,10 +13,8 @@ map_repeat = mapper(repeat)
 
 SENTINEL = object()
 
-T = TypeVar("T")
 
-
-def cycle(data: Sequence[T], n: Optional[int] = None) -> Iterator[T]:
+def cycle[T](data: Sequence[T], n: Optional[int] = None) -> Iterator[T]:
     """Returns an Iterator that repeats the sequence n times.
     if n is None, the iterator repeats endlessly."""
     return from_iterable(repeat(data) if n is None else repeat(data, n))
@@ -32,10 +30,7 @@ def swap(data: MutableSequence[Any], indices: Iterable[int]) -> None:
         data[index] = value
 
 
-T = TypeVar("T")
-
-
-def efficient_nwise(iterable: Iterable[T], n: int) -> Generator[deque[T]]:
+def efficient_nwise[T](iterable: Iterable[T], n: int) -> Generator[deque[T]]:
     """Yields efficients nwise views of the given iterable re-using a
     collections.deque object."""
     data = deque(islice(iterable := iter(iterable), n - 1), n)
@@ -43,10 +38,7 @@ def efficient_nwise(iterable: Iterable[T], n: int) -> Generator[deque[T]]:
         yield data
 
 
-T = TypeVar("T")
-
-
-def getitems(data: Sequence[T], items: Iterable[Any], /) -> Iterator[T]:
+def getitems[T](data: Sequence[T], items: Iterable[Any], /) -> Iterator[T]:
     """fetchs and Yields each item of the data object."""
     return map(partial(op.getitem, data), items)
 
@@ -73,11 +65,8 @@ def check_step(step: int, /):
 
 # islice = slicer(efficient_slice)
 
-T = TypeVar("T")
-D = TypeVar("D", Any, None)
 
-
-def get(data: Sequence[T], index: int, default: D = None, /) -> T | D:
+def get[T](data: Sequence[T], index: int, default: Any = None, /) -> T | Any:
     """Return the value for key if key is in the sequence, else default."""
     try:
         return data[index]
