@@ -1,163 +1,131 @@
-import itertools as it
-import math
-import operator as op
+import itertools as it  # pending for correct annotation
 from abc import abstractmethod
 from collections.abc import Iterator, Sequence
-from decimal import Decimal
-from fractions import Fraction
-from numbers import Integral, Real
-from typing import Self, TypeVar
+from math import log, trunc
+from operator import floordiv, mul
+from typing import Self
 
 from attrs import field, frozen
 
-from .bases import Ranged, slicer
-from .funcs import check_step
-
-T = TypeVar("T", int, float, Decimal, Fraction, Real, Integral)
+from .bases import Ranged, pos_range
 
 
 @frozen(slots=True)
 class BaseProgression[T](Ranged[T]):
-    a1: T
+    start: T
+    step: T
+    r: range = field(converter=pos_range, alias="size")
     data: Sequence[T] = field(init=False, repr=False)
 
-    @abstractmethod
-    def _unbound_index(self, number: T) -> float | int: ...
+    def __repr__(self, /) -> str:
+        return f"{type(self).__name__}({self.start!r}, {self.step!r}, size={len(self.r)!r})"
 
     @abstractmethod
-    def _sliced(self, r: range) -> Self: ...
+    def unbound_index(self, number: T) -> int: ...
+
+    @abstractmethod
+    def _sliced(self, r: range, /) -> Self: ...
 
     def _contains(self, number, /):
-        return self._unbound_index(number) in self.r
-
-    def __len__(self, /):
-        return len(self.r)
-
-    def __bool__(self, /):
-        return bool(self.r)
+        return self.unbound_index(number) in self.r
 
     @property
-    def an(self, /) -> T:
+    def stop(self, /) -> T:
+        return self._getitem(self.r.stop)
+
+    @property
+    def last(self, /) -> T:
         return self._getitem(self.r[-1])
 
     def clear(self, /) -> Self:
-        return type(self)(range(0), 0, 0)
+        return type(self)(0, 0, 0)
 
-    def _getslice(self, r: range) -> Self:
+    def _getslice(self, r: range, /) -> Self:
         if r:
             return self._sliced(r)
         else:
             return self.clear()
 
     def _count(self, number: T, r: range, /) -> int:
-        return r.count(self._unbound_index(number))
+        return r.count(self.unbound_index(number))
 
     def _index(self, number: T, r: range, /) -> int:
-        return r.index(self._unbound_index(number))
+        return r.index(self.unbound_index(number))
 
 
-@frozen(order=True, slots=True)
+@frozen(order=True, repr=False)
 class ArithmeticProgression[T](BaseProgression[T]):
-    """Emulates an Arithmetic Progression:
+    """Emulates stop Arithmetic Progression:
     r = A range indicating the indices of the progression.
-    a1 = the first term of the progression.
+    start = the first term of the progression.
     d = teh distance between each term.
 
     Example:
-    >>P = Progression.sized(.1, .1, n=10)
+    >>P = Progression(10, .1, .1)
     >>P[2] #prints .3
 
 
     """
 
-    distance: T
+    __slots__ = ()
 
     def _sliced(self, r, /) -> Self:
-        return type(self)(range(len(r)), self._getitem(r.start), r.step * self.distance)
+        return type(self)(self._getitem(r.start), r.step * self.step, len(r))
 
     def _getitem(self, index: int, /) -> T:
-        return self.a1 + (index * self.distance)
+        return self.start + (index * self.step)
 
-    def _unbound_index(self, number: T, /) -> T:
-        return (number - self.a1) / self.distance
+    def unbound_index(self, number: T, /) -> int:
+        if (index := (number - self.start) / self.step) % 1:
+            return -1
+        else:
+            return trunc(index)
 
     def __iter__(self, /) -> Iterator[T]:
-        return it.islice(it.count(self.a1, self.distance), len(self))
+        return it.islice(it.count(self.start, self.step), len(self))
 
     def __reversed__(self, /) -> Iterator[T]:
-        return it.islice(it.count(self.an, -self.distance), len(self))
+        return it.islice(it.count(self.stop, -self.step), len(self))
 
     @classmethod
-    @slicer
-    def fromrange(cls, slicer, /):
+    def fromrange(cls, rng: range, /):
         """Create Progression from a range. The stop argument will not be
         preserved if (stop - last_range_number) != step"""
-        if (step := slicer.step) is None:
-            growing = step = 1
 
-        else:
-            check_step(step)
-            growing = step > 0
-
-        stop = slicer.stop
-
-        if (start := slicer.start) is None:
-            start = 1
-            n = math.trunc(slicer.stop)
-
-        elif (start == stop) or (growing and start > stop) or (start < stop):
-            n = 0
-
-        else:
-            diff = stop - start if growing else start - stop
-            n = math.ceil(diff / abs(step))
-
-        return cls(range(n), start, step)
+        return cls(len(rng), rng.start, rng.step)
 
 
-@frozen(order=True, slots=True)
+@frozen(order=True, repr=False)
 class GeometricProgression[T](BaseProgression[T]):
-    ratio: T
+    __slots__ = ()
 
     def _getitem(self, index: int, /) -> T:
-        return self.a1 * self.ratio**index
+        return self.start * self.step**index
 
-    def _sliced(self, r: range) -> Self:
-        ratio = self.ratio * abs(r.step)
+    def _sliced(self, r: range, /) -> Self:
+        ratio = self.step * abs(r.step)
         if r.step < 0:
             ratio = 1 / ratio
-        return type(self)(range(len(r)), self._getitem(r.start), ratio)
+        return type(self)(self._getitem(r.start), ratio, len(r))
 
     def __iter__(self, /) -> Iterator[T]:
         return it.accumulate(
-            it.repeat(self.ratio, len(self.r) - 1), op.mul, initial=self.a1
+            it.repeat(self.step, len(self.r) - 1), mul, initial=self.start
         )
 
     def __reversed__(self, /) -> Iterator[T]:
         return it.accumulate(
-            it.repeat(self.ratio, len(self.r) - 1), op.floordiv, initial=self.an
+            it.repeat(self.step, len(self.r) - 1), floordiv, initial=self.last
         )
 
-    def _unbound_index(self, number: T, /) -> float | int:
-        return math.log(number / self.a1, self.ratio)
+    def unbound_index(self, number: T, /) -> int:
+        if (index := log(number / self.start, self.step)).is_integer():
+            return trunc(index)
+        else:
+            return -1
 
     def index(self, number: T, /) -> int:
-        return self.r.index(self._unbound_index(number))
+        return self.r.index(self.unbound_index(number))
 
     def sum(self, /) -> T:
-        return (self.a1 * (1 - self.ratio ** len(self))) / (1 - self.ratio)
-
-
-if __name__ == "__main__":
-    import builtins
-
-    geoprog = GeometricProgression(2, 2, 10)
-    a = geoprog[1]
-    test_list = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
-    assert test_list == list(geoprog)
-    assert test_list[::-1] == list(reversed(geoprog))
-    assert test_list[-3] == geoprog[-3]
-    assert test_list[5] == geoprog[5]
-    assert test_list.index(128) == geoprog.index(128)
-    assert test_list.count(128) == geoprog.count(128)
-    assert builtins.sum(geoprog) == geoprog.sum()
+        return (self.start * (1 - self.step ** len(self))) / (1 - self.step)

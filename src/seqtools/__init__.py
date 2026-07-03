@@ -24,6 +24,8 @@ __all__ = [
     "batched",
 ]
 
+import builtins
+
 from .basic import ReverseView as rview
 from .basic import SequenceView as view
 from .basic import Slice as sslice
