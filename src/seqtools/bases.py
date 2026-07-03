@@ -157,6 +157,12 @@ class Ranged[T](BaseIndexed[T]):
     __slots__ = ()
     r: range = field(converter=range)
 
+    def __len__(self, /):
+        return len(self.r)
+
+    def __bool__(self, /):
+        return bool(self.r)
+
 
 @base_frozen_dataclass
 class RelativeSized[T](Size[T]):
