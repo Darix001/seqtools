@@ -15,7 +15,7 @@ from .bases import (
     Ranged,
     WithData,
     boolen,
-    check_one_pos_arg,
+    check_nargs_on_overload,
 )
 from .funcs import getitems
 
@@ -160,7 +160,7 @@ class Slice[T](Ranged[T], Indexed[T]):
 
     def __init__(self, data: Sequence[T], /, *args: int | slice):
         if isinstance(first_arg := args[0], slice):
-            check_one_pos_arg(args, nargs=2)
+            check_nargs_on_overload(args, expected_nargs=2)
             slice_obj = first_arg
             if isinstance(data, Slice):
                 r = data.r[slice_obj]
@@ -169,7 +169,7 @@ class Slice[T](Ranged[T], Indexed[T]):
 
         elif isinstance(first_arg, range):
             r = first_arg
-            check_one_pos_arg(args, nargs=2)
+            check_nargs_on_overload(args, expected_nargs=2)
             if isinstance(data, Slice):
                 r = data.r[r.start : r.stop : r.step]
 

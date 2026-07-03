@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Sequence
-from functools import partial, update_wrapper, wraps
+from functools import partial, wraps
 from sys import maxsize
 from typing import Any, Generic, Optional, Self, TypeVar, TypeVarTuple, overload
 
@@ -35,9 +35,11 @@ def checker(cls, /) -> Callable[..., bool]:
     return lambda self, obj, /: type(obj) is cls and len(obj) == self.r
 
 
-def slicer[T](func: Callable[[Any, slice], T], /) -> Callable[..., T]:
-    """Decorator for functions wich accepts one argument and range arguments"""
-    return update_wrapper(lambda obj, /, *args: func(obj, slice(*args)), func)
+def check_nargs_on_overload(args: tuple[Any, ...], expected_nargs: int):
+    if (nargs := len(args)) != expected_nargs:
+        raise TypeError(
+            f"Expected {expected_nargs} when passing a {type(args[0])} object, but receive {nargs}"
+        )
 
 
 def datamethod[T](func: Callable[[Sequence], T], /) -> Callable[..., T]:
