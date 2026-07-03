@@ -4,7 +4,7 @@ import operator as op
 from collections import Counter, UserList
 from collections.abc import Iterator, Sequence
 from itertools import chain, islice
-from typing import Any, Self, overload
+from typing import Any, overload
 
 from attrs import field, frozen
 from more_itertools import locate
@@ -15,7 +15,7 @@ from .bases import (
     Ranged,
     WithData,
     boolen,
-    slicer,
+    check_one_pos_arg,
 )
 from .funcs import getitems
 
@@ -35,11 +35,10 @@ class SequenceView[T](WithData[T]):
     def __getitem__(self, index: int | slice, /) -> Slice | T:
         data = self.data
         if isinstance(index, slice):
-            indices = range(len(data))[index]
-            if indices.step < 0:
-                return Slice(ReverseView(data), indices[::-1])
+            if index.step and index.step < 0:
+                return Slice(ReverseView(data), index)
             else:
-                return Slice(data, indices)
+                return Slice(data, index)
         else:
             return data[index]
 
@@ -79,11 +78,10 @@ class ReverseView[T](SequenceView[T]):
     def __getitem__(self, index: int | slice, /) -> Slice | T:
         data = self.data
         if isinstance(index, slice):
-            indices = range(len(data))[index]
-            if indices.step < 0:
-                return Slice(data, indices[::-1])
+            if index.step and index.step < 0:
+                return Slice(data, index)
             else:
-                return Slice(self, indices)
+                return Slice(self, index)
         else:
             return data[~index]
 
@@ -125,32 +123,58 @@ class Indexed[T](BaseIndexed[T]):
     def _count(self, obj, indices, /):
         return sum(map(Counter(indices).get, locate(self.data, obj)))
 
-    def unpack(self, /) -> Sequence[T]:
-        r = self.r
-        return self.data[r.start : r.stop : r.step]
-
 
 @frozen
 class Slice[T](Ranged[T], Indexed[T]):
     """Emulates a slice of the given sequence.
     Example:
-    >> x = Slice.fromindices([1, 2, 3, 4, 5, 6, 7], 2, 5)
+    >> x = Slice([1, 2, 3, 4, 5, 6, 7], 2, 5)
     >> print(x[2]) #prints 5
 
     """
 
     __slots__ = ()
-    r: range = field(converter=None)
+    r: range
 
-    @classmethod
-    @slicer
-    def fromindices(cls, data: Sequence[T], slice_obj: slice, /) -> Self:
-        if isinstance(data, Slice):
-            r = data.r[slice_obj]
-        else:
-            r = range(*slice_obj.indices(len(data)))
+    @overload
+    def __init__(
+        self, data: Sequence[T], slice_obj: slice[int | None, int | None, int | None], /
+    ):
+        pass
 
-        return cls(data, r)
+    @overload
+    def __init__(self, data: Sequence[T], range_obj: range, /):
+        pass
+
+    @overload
+    def __init__(self, data: Sequence[T], stop: int, /):
+        pass
+
+    @overload
+    def __init__(self, data: Sequence[T], start: int, stop: int, /):
+        pass
+
+    @overload
+    def __init__(self, data: Sequence[T], start: int, stop: int, step: int, /):
+        pass
+
+    def __init__(self, data: Sequence[T], /, *args: int | slice):
+        if isinstance(first_arg := args[0], slice):
+            check_one_pos_arg(args, nargs=2)
+            slice_obj = first_arg
+            if isinstance(data, Slice):
+                r = data.r[slice_obj]
+            else:
+                r = range(*slice_obj.indices(len(data)))
+
+        elif isinstance(first_arg, range):
+            r = first_arg
+            check_one_pos_arg(args, nargs=2)
+            if isinstance(data, Slice):
+                r = data.r[r.start : r.stop : r.step]
+
+        self._setattr("data", data)
+        self._setattr("r", r)
 
     def __reversed__(self, /) -> Iterator[T]:
         size = len(data := self.data)

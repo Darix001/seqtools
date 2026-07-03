@@ -5,15 +5,10 @@ from typing import Any, Self
 
 from attrs import field, frozen
 
-from .bases import OPINT, Ranged, RelativeSized, Sequence
+from .bases import OPINT, Ranged, RelativeSized, Sequence, pos_range
 from .funcs import from_iterable, map_repeat, reverse_all
 
 div_index = {0, -1}.__contains__
-
-
-def pos_range(r: int) -> range:
-    """Returns range(r). If r is a negative number, returns range(0)"""
-    return range(0 if r < 0 else r)
 
 
 @frozen
@@ -22,13 +17,9 @@ class Repeat[V](Ranged[V]):
 
     data: V
     r: range = field(converter=pos_range, repr=attrgetter("stop"))
-    size = property(attrgetter("r.stop"))
-
-    def __len__(self, /) -> int:
-        return self.r.stop
 
     def __iter__(self, /) -> Iterator[V]:
-        return repeat(self.data, self.r.stop)
+        return repeat(self.data, len(self))
 
     __reversed__ = __iter__
 
@@ -38,14 +29,14 @@ class Repeat[V](Ranged[V]):
     def __add__(self, value, /):
         if isinstance(value, cls := type(self)):
             if (v := self.data) == value.value:
-                return cls(v, self.r.stop + value.r.stop)
+                return cls(v, len(self) + len(value))
         return NotImplemented
 
     def _getitem(self, index: int, /) -> V:
         return self.data
 
     def _getslice(self, r: range, /) -> Self:
-        return type(self)(self.data, self.r.stop)
+        return type(self)(self.data, len(self))
 
     def _count(self, value: Any, r: range, /) -> int:
         return +(self.data == value)
@@ -57,10 +48,10 @@ class Repeat[V](Ranged[V]):
             raise self.value_error(value)
 
     def tolist(self, /) -> list[V]:
-        return [self.data] * self.r.stop
+        return [self.data] * len(self)
 
     def to_tuple(self, /) -> tuple[V, ...]:
-        return (self.data,) * self.r.stop
+        return (self.data,) * len(self)
 
 
 @frozen

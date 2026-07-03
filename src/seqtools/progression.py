@@ -10,8 +10,7 @@ from typing import Self, TypeVar
 
 from attrs import field, frozen
 
-from .bases import Ranged, slicer
-from .funcs import check_step
+from .bases import Ranged, pos_range
 
 T = TypeVar("T", int, float, Decimal, Fraction, Real, Integral)
 
@@ -25,25 +24,19 @@ class BaseProgression[T](Ranged[T]):
     def _unbound_index(self, number: T) -> float | int: ...
 
     @abstractmethod
-    def _sliced(self, r: range) -> Self: ...
+    def _sliced(self, r: range, /) -> Self: ...
 
     def _contains(self, number, /):
         return self._unbound_index(number) in self.r
-
-    def __len__(self, /):
-        return len(self.r)
-
-    def __bool__(self, /):
-        return bool(self.r)
 
     @property
     def an(self, /) -> T:
         return self._getitem(self.r[-1])
 
     def clear(self, /) -> Self:
-        return type(self)(range(0), 0, 0)
+        return type(self)(0, 0, 0)
 
-    def _getslice(self, r: range) -> Self:
+    def _getslice(self, r: range, /) -> Self:
         if r:
             return self._sliced(r)
         else:
@@ -71,9 +64,10 @@ class ArithmeticProgression[T](BaseProgression[T]):
     """
 
     distance: T
+    r: range = field(converter=pos_range)
 
     def _sliced(self, r, /) -> Self:
-        return type(self)(range(len(r)), self._getitem(r.start), r.step * self.distance)
+        return type(self)(self._getitem(r.start), r.step * self.distance, len(r))
 
     def _getitem(self, index: int, /) -> T:
         return self.a1 + (index * self.distance)
@@ -88,45 +82,26 @@ class ArithmeticProgression[T](BaseProgression[T]):
         return it.islice(it.count(self.an, -self.distance), len(self))
 
     @classmethod
-    @slicer
-    def fromrange(cls, slicer, /):
+    def fromrange(cls, rng: range, /):
         """Create Progression from a range. The stop argument will not be
         preserved if (stop - last_range_number) != step"""
-        if (step := slicer.step) is None:
-            growing = step = 1
 
-        else:
-            check_step(step)
-            growing = step > 0
-
-        stop = slicer.stop
-
-        if (start := slicer.start) is None:
-            start = 1
-            n = math.trunc(slicer.stop)
-
-        elif (start == stop) or (growing and start > stop) or (start < stop):
-            n = 0
-
-        else:
-            diff = stop - start if growing else start - stop
-            n = math.ceil(diff / abs(step))
-
-        return cls(range(n), start, step)
+        return cls(len(rng), rng.start, rng.step)
 
 
 @frozen(order=True, slots=True)
 class GeometricProgression[T](BaseProgression[T]):
     ratio: T
+    r: range = field(converter=pos_range)
 
     def _getitem(self, index: int, /) -> T:
         return self.a1 * self.ratio**index
 
-    def _sliced(self, r: range) -> Self:
+    def _sliced(self, r: range, /) -> Self:
         ratio = self.ratio * abs(r.step)
         if r.step < 0:
             ratio = 1 / ratio
-        return type(self)(range(len(r)), self._getitem(r.start), ratio)
+        return type(self)(self._getitem(r.start), ratio, len(r))
 
     def __iter__(self, /) -> Iterator[T]:
         return it.accumulate(
