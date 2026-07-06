@@ -27,7 +27,6 @@ class Repeat[V](Ranged[V]):
         return self.data == obj
 
     def __add__(self, value, /):
-        from copy import
         if isinstance(value, cls := type(self)):
             if (v := self.data) == value.value:
                 return cls(v, len(self) + len(value))

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Sequence
-from copy import replace
 from functools import partial, wraps
 from sys import maxsize
 from typing import Any, Generic, Optional, Self, TypeVar, TypeVarTuple, overload
