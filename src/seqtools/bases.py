@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Sequence
+from copy import replace
 from functools import partial, wraps
 from sys import maxsize
 from typing import Any, Generic, Optional, Self, TypeVar, TypeVarTuple, overload
 
-from attrs import evolve, field, frozen
+from attrs import field, frozen, validators
 
 from .funcs import isizes
 
@@ -63,7 +64,6 @@ class BaseSequence(Sequence[T], Generic[T]):
 
     __slots__ = ()
     iterfunc = None
-    _replace = evolve
     _setattr = object.__setattr__
 
     def __init_subclass__(cls, /) -> None:
@@ -86,12 +86,20 @@ base_frozen_dataclass = partial(frozen, init=False, repr=False)
 class WithData[T](BaseSequence[T]):
     data: Sequence[T]
 
+    def __replace__(self, /, data) -> Self:
+        new = super().__new__()
+        new._setattr("data", data)
+        return new
+
 
 @base_frozen_dataclass
 class Size[T](WithData[T]):
     """Base Class for sequence wrappers that transform their sequence size."""
 
-    r: Sequence[int] | int
+    def __replace__(self, data=None, r=None) -> Self:
+        new = super().__replace__(data)
+        new._setattr("r", r or self.r)
+        return new
 
     def __bool__(self, /):
         return True if self.data and self.r else False
@@ -155,7 +163,7 @@ class Ranged[T](BaseIndexed[T]):
     """Base class for classes wich uses an attribute r of type range."""
 
     __slots__ = ()
-    r: range = field(converter=range)
+    r: range
 
     def __len__(self, /):
         return len(self.r)
@@ -167,7 +175,13 @@ class Ranged[T](BaseIndexed[T]):
 @base_frozen_dataclass
 class RelativeSized[T](Size[T]):
     __slots__ = ()
-    r: int
+    r: int = field(validator=validators.instance_of(int))
+    _min_r = 0
+
+    @r.validator
+    def positive_r(self, attribute, value: int, /):
+        if value < self._min_r:
+            raise ValueError(f"r must be an integer greater than {self._min_r}")
 
 
 @base_frozen_dataclass

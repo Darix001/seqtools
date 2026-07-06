@@ -27,6 +27,7 @@ class Repeat[V](Ranged[V]):
         return self.data == obj
 
     def __add__(self, value, /):
+        from copy import
         if isinstance(value, cls := type(self)):
             if (v := self.data) == value.value:
                 return cls(v, len(self) + len(value))
@@ -63,7 +64,6 @@ class Mul[T](RelativeSized[T]):
         #prints 0 1 0 1 0 1
     """
 
-    r: int
     __slots__ = ()
 
     def __new__(cls, data: Sequence[T], r: int):
@@ -73,12 +73,12 @@ class Mul[T](RelativeSized[T]):
         return super().__new__(cls, data, r)
 
     def __mul__(self, r, /):
-        return self._replace(r=self.r * r)
+        return self.__replace__(r=self.r * r)
 
     def __add__(self, value, /):
         if type(self) is type(value):
             if self.data == value.data:
-                return self._replace(r=self.r + value.r)
+                return self.__replace__(r=self.r + value.r)
         return NotImplemented
 
     def __getitem__(self, index, /):

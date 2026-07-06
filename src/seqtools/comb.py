@@ -6,7 +6,7 @@ from math import factorial, perm, prod, sumprod, trunc
 from operator import eq, floordiv, indexOf, methodcaller, mul, sub
 from typing import Any, Generic, TypeVarTuple, Unpack
 
-from attrs import field, frozen
+from attrs import field, frozen, validators
 
 from .bases import Combinations, Sequence
 from .funcs import (
@@ -38,6 +38,8 @@ def nwise_contains_or_count_deco(func, /):
 
 class Nwise[T](Combinations[T]):
     """Emulates tuples of every r elements of data."""
+
+    __slots__ = ()
 
     def _getitem(self, index, data, r, /) -> Sequence[T]:
         if len(res := data[index : index + r]) != r:
@@ -90,10 +92,13 @@ TProd = TypeVarTuple("TProd")
 class Product(Combinations, Generic[Unpack[TProd]]):
     """Same as it.product but acts as a sequence."""
 
+    __slots__ = ()
     data: tuple[Sequence[Any]]
-    r: int = field(kw_only=True, default=1)
+    r: int = 1
 
     def __init__(self, *data: tuple[Sequence[Any]], repeat: int = 1):
+        if not isinstance(repeat, int) or repeat < 1:
+            raise ValueError("Repeat must be a positive integer.")
         self._setattr("data", data)
         self._setattr("r", repeat)
 
@@ -195,7 +200,12 @@ class Product(Combinations, Generic[Unpack[TProd]]):
 @frozen
 class Permutations[T](Combinations[T]):
     __slots__ = ()
-    r: int | None = field(validator=lambda r: r is None or r >= 0)
+    r: int | None = field(validator=validators.instance_of(int | None), default=None)
+
+    @r.validator
+    def check_positive_r(self, attribute: str, value: int, /):
+        if value < 0:
+            raise ValueError("r must be a positive number.")
 
     # An implementation efficient for __iter__ is missing.
     def __len__(self, /) -> int:
@@ -226,6 +236,7 @@ class Permutations[T](Combinations[T]):
 @frozen(order=True)
 class Batched[T](Combinations[T]):
     __slots__ = ()
+    _min_r = 1
 
     def _getitem(
         self,
