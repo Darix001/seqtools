@@ -178,7 +178,7 @@ class RelativeSized[T](Size[T]):
     _min_r = 0
 
     @r.validator
-    def positive_r(self, attribute, value: int, /):
+    def positive_r(self, attribute: str, value: int, /):
         if value < self._min_r:
             raise ValueError(f"r must be an integer greater than {self._min_r}")
 
@@ -195,16 +195,18 @@ class SubSequence[T](WithData[T]):
 
     _check = checker(tuple)
 
-    def __contains__(self, value, /):
+    def __contains__(self, value: tuple[T, ...], /):
         return self._check(value) and self._contains(value)
 
-    def index(self, value, /, start: int = 0, stop: int = maxsize) -> int:
+    def index(
+        self, value: tuple[T, ...], /, start: int = 0, stop: int = maxsize
+    ) -> int:
         if self._check(value):
             return self._index(value, start, stop)
         else:
             raise self.value_error(value)
 
-    def count(self, value, /) -> int:
+    def count(self, value: tuple[T, ...], /) -> int:
         return self._count(value) if self._check(value) else 0
 
 
@@ -217,10 +219,10 @@ class Combinations[T](RelativeSized[T], SubSequence[T]):
     __slots__ = ()
 
     @abstractmethod
-    def _getitem(self, index, data, r) -> Iterable[T]: ...
+    def _getitem(self, index: int, data: Sequence[T], r: int) -> Iterable[T]: ...
 
     def __bool__(self, /):
         return not (r := self.r) or len(self.data) >= r
 
-    def __getitem__(self, index, /) -> tuple[T, ...]:
+    def __getitem__(self, index: int, /) -> tuple[T, ...]:
         return tuple(self._getitem(index, self.data, self.r))

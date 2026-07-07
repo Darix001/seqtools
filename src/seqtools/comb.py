@@ -254,5 +254,8 @@ class Batched[T](Combinations[T]):
     def __len__(self, /):
         return round(len(self.data) / self.r)
 
+    def _index(self, value:tuple[T, ...], start:int, stop:int, /) -> int:
+        for i, v in enumerate(value)
+
 
 del pairwise, mul, accumulate
