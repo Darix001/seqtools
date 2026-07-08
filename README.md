@@ -35,10 +35,13 @@ Inspired by the elegance and efficiency of `itertools`, `seqtools` reimagines th
 
 ```bash
 pip install git+https://github.com/Darix001/seqtools
+```
 
+```bash
 #with uv (recommended)
 uv add git+https://github.com/Darix001/seqtools
 ```
+
 
 ### Requirements
 - Python 3.12+
