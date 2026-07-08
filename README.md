@@ -34,7 +34,7 @@ Inspired by the elegance and efficiency of `itertools`, `seqtools` reimagines th
 ## 📦 Installation
 
 ```bash
-pip install seqtools
+pip install git+https://github.com/Darix001/seqtools
 ```
 
 ### Requirements
