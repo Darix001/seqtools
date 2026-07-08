@@ -4,9 +4,10 @@ from functools import partial
 from itertools import accumulate, batched, chain, islice, pairwise, repeat, tee
 from math import factorial, perm, prod, sumprod, trunc
 from operator import eq, floordiv, indexOf, methodcaller, mul, sub
+from operator import index as to_index
 from typing import Any, Generic, TypeVarTuple, Unpack
 
-from attrs import field, frozen, validators
+from attrs import field, frozen
 
 from .bases import Combinations, Sequence
 from .funcs import (
@@ -41,7 +42,7 @@ class Nwise[T](Combinations[T]):
 
     __slots__ = ()
 
-    def _getitem(self, index, data, r, /) -> Sequence[T]:
+    def _getitem(self, index: int, data: Sequence[T], r: int, /) -> Sequence[T]:
         if len(res := data[index : index + r]) != r:
             raise self.index_error()
         return res
@@ -200,7 +201,7 @@ class Product(Combinations, Generic[Unpack[TProd]]):
 @frozen
 class Permutations[T](Combinations[T]):
     __slots__ = ()
-    r: int | None = field(validator=validators.instance_of(int | None), default=None)
+    r: int | None = field(converter=lambda x: to_index(x) if x is not None else x)
 
     @r.validator
     def check_positive_r(self, attribute: str, value: int, /):
@@ -211,7 +212,7 @@ class Permutations[T](Combinations[T]):
     def __len__(self, /) -> int:
         return perm(len(self.data), self.r)
 
-    def _getitem(self, index, data, r, /) -> Iterable[T]:
+    def _getitem(self, index: int, data: Sequence[T], r: int, /) -> Iterable[T]:
         # Code grabbed from more_itertools.nth_permutation
         if r is None or r == (n := len(data)):
             r, c = n, factorial(n)
@@ -240,9 +241,9 @@ class Batched[T](Combinations[T]):
 
     def _getitem(
         self,
-        index,
-        data,
-        r,
+        index: int,
+        data: Sequence[T],
+        r: int,
     ) -> Iterable[T]:
         if not (res := data[index * r : (index + (r - 1)) * r]):
             raise self.index_error()
@@ -253,9 +254,6 @@ class Batched[T](Combinations[T]):
 
     def __len__(self, /):
         return round(len(self.data) / self.r)
-
-    def _index(self, value:tuple[T, ...], start:int, stop:int, /) -> int:
-        for i, v in enumerate(value)
 
 
 del pairwise, mul, accumulate

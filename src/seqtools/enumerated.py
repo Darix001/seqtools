@@ -1,7 +1,9 @@
 from collections.abc import Iterator
 from itertools import count
+from operator import index
+from typing import SupportsIndex
 
-from attrs import frozen
+from attrs import field, frozen
 
 from .bases import SubSequence
 from .funcs import get
@@ -9,11 +11,11 @@ from .funcs import get
 SENTINEL = object()
 
 
-@frozen
+@frozen(slots=True)
 class Enumerated[T](SubSequence[T]):
     """Same as builtins.enumerate but as a sequence."""
 
-    start: int = 0
+    start: SupportsIndex = field(default=0, converter=index)
 
     def __getitem__(self, index, /) -> tuple[int, T]:
         data = self.data

@@ -4,7 +4,7 @@ import operator as op
 from collections import Counter, UserList
 from collections.abc import Iterator, Sequence
 from itertools import chain, islice
-from typing import Any, overload
+from typing import Any, SupportsIndex, overload
 
 from attrs import field, frozen
 from more_itertools import locate
@@ -27,12 +27,12 @@ class SequenceView[T](WithData[T]):
     __slots__ = ()
 
     @overload
-    def __getitem__(self, index: int, /) -> T: ...
+    def __getitem__(self, index: SupportsIndex, /) -> T: ...
 
     @overload
     def __getitem__(self, index: slice, /) -> Slice: ...
 
-    def __getitem__(self, index: int | slice, /) -> Slice | T:
+    def __getitem__(self, index: SupportsIndex | slice, /) -> Slice | T:
         data = self.data
         if isinstance(index, slice):
             if index.step and index.step < 0:
@@ -70,12 +70,12 @@ class ReverseView[T](SequenceView[T]):
             return super().__new__(cls)
 
     @overload
-    def __getitem__(self, index: int, /) -> T: ...
+    def __getitem__(self, index: SupportsIndex, /) -> T: ...
 
     @overload
     def __getitem__(self, index: slice, /) -> Slice: ...
 
-    def __getitem__(self, index: int | slice, /) -> Slice | T:
+    def __getitem__(self, index: SupportsIndex | slice, /) -> Slice | T:
         data = self.data
         if isinstance(index, slice):
             if index.step and index.step < 0:
@@ -111,7 +111,7 @@ class Indexed[T](BaseIndexed[T]):
     def __reversed__(self, /) -> Iterator[T]:
         return getitems(self.data, reversed(self.r))
 
-    def _getitem(self, index: int, /) -> T:
+    def _getitem(self, index: SupportsIndex, /) -> T:
         return self.data[index]
 
     def _getslice(self, r: Sequence[int], /):

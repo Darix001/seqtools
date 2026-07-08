@@ -1,12 +1,22 @@
 from __future__ import annotations
 
+import operator as op
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from functools import partial, wraps
 from sys import maxsize
-from typing import Any, Generic, Optional, Self, TypeVar, TypeVarTuple, overload
+from typing import (
+    Any,
+    Generic,
+    Optional,
+    Self,
+    SupportsIndex,
+    TypeVar,
+    TypeVarTuple,
+    overload,
+)
 
-from attrs import field, frozen, validators
+from attrs import field, frozen
 
 from .funcs import isizes
 
@@ -110,7 +120,7 @@ class BaseIndexed[T](Size[T]):
     r: Sequence[int]
 
     @abstractmethod
-    def _getitem(self, index, /) -> T: ...
+    def _getitem(self, index: SupportsIndex, /) -> T: ...
 
     @abstractmethod
     def _getslice(self, r, /) -> Self: ...
@@ -125,14 +135,14 @@ class BaseIndexed[T](Size[T]):
     def _contains(self, obj, indices, /) -> bool: ...
 
     @overload
-    def __getitem__(self, index: int, /) -> T:
+    def __getitem__(self, index: SupportsIndex, /) -> T:
         pass
 
     @overload
     def __getitem__(self, index: slice, /) -> Self:
         pass
 
-    def __getitem__(self, index: int | slice, /) -> T | Self:
+    def __getitem__(self, index: SupportsIndex | slice, /) -> T | Self:
         if type(r := self.r[index]) is int:
             return self._getitem(r)
         else:
@@ -174,7 +184,7 @@ class Ranged[T](BaseIndexed[T]):
 @base_frozen_dataclass
 class RelativeSized[T](Size[T]):
     __slots__ = ()
-    r: int = field(validator=validators.instance_of(int))
+    r: int = field(converter=op.index)
     _min_r = 0
 
     @r.validator
@@ -224,5 +234,5 @@ class Combinations[T](RelativeSized[T], SubSequence[T]):
     def __bool__(self, /):
         return not (r := self.r) or len(self.data) >= r
 
-    def __getitem__(self, index: int, /) -> tuple[T, ...]:
-        return tuple(self._getitem(index, self.data, self.r))
+    def __getitem__(self, index: SupportsIndex, /) -> tuple[T, ...]:
+        return tuple(self._getitem(op.index(index), self.data, self.r))

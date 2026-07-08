@@ -1,7 +1,8 @@
 from collections.abc import Iterator
 from itertools import accumulate, chain, pairwise
+from operator import index as to_index
 from operator import methodcaller
-from typing import Any, Self, overload
+from typing import Any, Self, SupportsIndex, overload
 
 from .bases import OPINT, Sequence, WithData, calcsize, datamethod
 from .funcs import isizes
@@ -38,15 +39,15 @@ class Chain[T](WithData[T]):
         self._setattr("data", tuple(sequences))
 
     @overload
-    def __getitem__(self, index: int, /) -> T: ...
+    def __getitem__(self, index: SupportsIndex, /) -> T: ...
 
     @overload
     def __getitem__(self, index: slice, /) -> Self: ...
 
-    def __getitem__(self, index, /) -> T | Self:
+    def __getitem__(self, index: SupportsIndex | slice, /) -> T | Self:
         data = self.data
-        if type(index) is not slice:
-            if index < 0:
+        if not isinstance(index, slice):
+            if (index := to_index(index)) < 0:
                 data = filter(None, reversed(data))
                 for sequence in data:
                     if (size := len(sequence)) >= -index:
