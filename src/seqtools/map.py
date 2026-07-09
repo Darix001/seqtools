@@ -20,17 +20,15 @@ def create_map_methods(
 
 
 def submap_method[T](func: Callable) -> Callable[[T], T]:
-    return lambda self, /: type(self)(func, self.data)
+    return lambda self, /: type(self)(func, self)
 
 
 def binary_map_method_creator[T](method_name: str) -> Callable[[T, Any], T]:
-    return lambda self, value, /: type(self)(
-        methodcaller(method_name, value), self.data
-    )
+    return lambda self, value, /: type(self)(methodcaller(method_name, value), self)
 
 
 def unary_map_method_creator[T](method_name: str) -> Callable[[T], T]:
-    return lambda self, /: type(self)(scalar_lookup[method_name], self.data)
+    return lambda self, /: type(self)(scalar_lookup[method_name], self)
 
 
 METHOD_NAMES = {
@@ -39,15 +37,32 @@ METHOD_NAMES = {
 }
 
 
+def extract_attr(obj: attrgetter) -> str:
+    string = f"{obj!r}"
+    return string[string.find("(") + 2 : string.find(")") - 1]
+
+
 @frozen
 class Map[T](BaseMap[T]):
     __slots__ = ()
+    _getitem = operator.call
 
     def __getattr__(self, attr: str, /) -> Self:
-        return type(self)(attrgetter(attr), self.data)
+        if isinstance(func := self.func, attrgetter):
+            attr = f"{extract_attr(func)}.{attr}"
+            data = self.data
+        else:
+            data = self
+        return type(self)(attrgetter(attr), data)
 
     def __call__(self, *args, **kw) -> Self:
-        return type(self)(methodcaller("__call__", *args, **kw), self)
+        if isinstance(func := self.func, attrgetter):
+            attr = extract_attr(func)
+            data = self.data
+        else:
+            attr = "__call__"
+            data = self
+        return type(self)(methodcaller(attr, *args, **kw), data)
 
     namespace = vars()
     create_map_methods(
@@ -65,15 +80,14 @@ class Map[T](BaseMap[T]):
         return type(self)(divmod, self)
 
     def __round__(self, ndigits=None) -> Self:
-        cls = type(self)
-        if ndigits is None:
-            return cls(round, self.data)
-        else:
-            return cls(partial(round, ndigits=ndigits), self.data)
+        func = round if ndigits is None else partial(round, ndigits=ndigits)
+        return type(self)(func, self.data)
 
     del namespace
 
 
 class Starmap[T](BaseMap[T]):
     __slots__ = ()
-    data: Sequence[Sequence[Any]]
+
+    def _getitem(self, func: Callable[..., T], item: Any) -> T:
+        return func(*item)

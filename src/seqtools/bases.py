@@ -288,6 +288,9 @@ class BaseMap[T](WithData[T]):
     func: Callable[..., T]
     data: Sequence[Any]
 
+    def __len__(self, /):
+        return len(self.data)
+
     @abstractmethod
     def _getitem(self, func: Callable[..., T], item: Any):
         pass
@@ -295,8 +298,10 @@ class BaseMap[T](WithData[T]):
     def __getitem__(self, index: SupportsIndex):
         return self._getitem(self.func, self.data[index])
 
-    def __init_subclass__(cls, /):
+    def __init_subclass__(cls, /, infer_iter: bool = True):
         super().__init_subclass__()
+        if not infer_iter:
+            return
         fn_name = cls.__name__.lower()
         try:
             func = getattr(builtins, fn_name, None) or getattr(itertools, fn_name)

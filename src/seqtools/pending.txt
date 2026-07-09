@@ -1,1 +1,1 @@
-move base functional and base progression to bases
+create a map class that accepts multiple data as the map builtin function.
