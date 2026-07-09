@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import builtins
+import itertools
 import operator as op
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Sequence
@@ -88,10 +90,10 @@ class BaseSequence(Sequence[T], Generic[T]):
         return IndexError(f"{type(self).__name__} object index out of range.")
 
 
-base_frozen_dataclass = partial(frozen, init=False, repr=False)
+base_frozen = partial(frozen, init=False, repr=False)
 
 
-@base_frozen_dataclass(slots=True)
+@base_frozen(slots=True)
 class WithData[T](BaseSequence[T]):
     data: Sequence[T]
 
@@ -101,7 +103,7 @@ class WithData[T](BaseSequence[T]):
         return new
 
 
-@base_frozen_dataclass
+@base_frozen
 class Size[T](WithData[T]):
     """Base Class for sequence wrappers that transform their sequence size."""
 
@@ -114,7 +116,7 @@ class Size[T](WithData[T]):
         return True if self.data and self.r else False
 
 
-@base_frozen_dataclass
+@base_frozen
 class BaseIndexed[T](Size[T]):
     __slots__ = ()
     r: Sequence[int]
@@ -167,7 +169,7 @@ class BaseIndexed[T](Size[T]):
             return 0
 
 
-@base_frozen_dataclass
+@base_frozen
 class Ranged[T](BaseIndexed[T]):
     """Base class for classes wich uses an attribute r of type range."""
 
@@ -181,7 +183,7 @@ class Ranged[T](BaseIndexed[T]):
         return bool(self.r)
 
 
-@base_frozen_dataclass
+@base_frozen
 class RelativeSized[T](Size[T]):
     __slots__ = ()
     r: int = field(converter=op.index)
@@ -193,7 +195,7 @@ class RelativeSized[T](Size[T]):
             raise ValueError(f"r must be an integer greater than {self._min_r}")
 
 
-@base_frozen_dataclass
+@base_frozen
 class SubSequence[T](WithData[T]):
     """Base Class for sequences of sequences"""
 
@@ -220,7 +222,7 @@ class SubSequence[T](WithData[T]):
         return self._count(value) if self._check(value) else 0
 
 
-@base_frozen_dataclass
+@base_frozen
 class Combinations[T](RelativeSized[T], SubSequence[T]):
     """Base Class for combinatoric sequences. A combinations subclass is a type
     of sequence that returns r-length sucessive tuples of different combinations
@@ -236,3 +238,71 @@ class Combinations[T](RelativeSized[T], SubSequence[T]):
 
     def __getitem__(self, index: SupportsIndex, /) -> tuple[T, ...]:
         return tuple(self._getitem(op.index(index), self.data, self.r))
+
+
+@frozen(slots=True)
+class BaseProgression[T](Ranged[T]):
+    start: T
+    step: T
+    r: range = field(converter=pos_range, alias="size")
+    data: Sequence[T] = field(init=False, repr=False)
+
+    def __repr__(self, /) -> str:
+        return f"{type(self).__name__}({self.start!r}, {self.step!r}, size={len(self.r)!r})"
+
+    @abstractmethod
+    def unbound_index(self, number: T) -> int: ...
+
+    @abstractmethod
+    def _sliced(self, r: range, /) -> Self: ...
+
+    def _contains(self, number, /):
+        return self.unbound_index(number) in self.r
+
+    @property
+    def stop(self, /) -> T:
+        return self._getitem(self.r.stop)
+
+    @property
+    def last(self, /) -> T:
+        return self._getitem(self.r[-1])
+
+    def clear(self, /) -> Self:
+        return type(self)(0, 0, 0)
+
+    def _getslice(self, r: range, /) -> Self:
+        if r:
+            return self._sliced(r)
+        else:
+            return self.clear()
+
+    def _count(self, number: T, r: range, /) -> int:
+        return r.count(self.unbound_index(number))
+
+    def _index(self, number: T, r: range, /) -> int:
+        return r.index(self.unbound_index(number))
+
+
+@frozen(slots=True)
+class BaseMap[T](WithData[T]):
+    func: Callable[..., T]
+    data: Sequence[Any]
+
+    @abstractmethod
+    def _getitem(self, func: Callable[..., T], item: Any):
+        pass
+
+    def __getitem__(self, index: SupportsIndex):
+        return self._getitem(self.func, self.data[index])
+
+    def __init_subclass__(cls, /):
+        super().__init_subclass__()
+        fn_name = cls.__name__.lower()
+        try:
+            func = getattr(builtins, fn_name, None) or getattr(itertools, fn_name)
+        except AttributeError as e:
+            raise AttributeError(
+                "Class name does not match any iterable class on builtins and operator modules."
+            ) from e
+        else:
+            cls.__iter__ = lambda self, /: func(self.func, self.data)

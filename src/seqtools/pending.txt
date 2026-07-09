@@ -1,2 +1,1 @@
-Move repeat.Mul and Slice to bases and organize classes so default slicing leads to Slice instances
-and obj * n leads to Mul instance.
+move base functional and base progression to bases

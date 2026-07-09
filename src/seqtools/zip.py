@@ -10,7 +10,7 @@ from attrs import frozen
 from .bases import (
     Sequence,
     SubSequence,
-    base_frozen_dataclass,
+    base_frozen,
     calcsize,
     datamethod,
     isizes,
@@ -22,7 +22,7 @@ BZipTs = TypeVarTuple("BZipTs")
 T = TypeVar("T")
 
 
-@base_frozen_dataclass(hash=False, eq=False)
+@base_frozen(hash=False, eq=False)
 class BaseZip(SubSequence, Generic[Unpack[BZipTs]]):
     __slots__ = ()
 

@@ -47,29 +47,40 @@ class Nwise[T](Combinations[T]):
             raise self.index_error()
         return res
 
-    def iterfunc(reverse, /):
-        def __iter__(self, /):
-            first = data = self.data
+    def __iter__(self, /):
+        first = data = self.data
 
-            if reverse:
-                first = reversed(first)
+        if not (r := self.r):
+            return repeat((), len(data))
 
-            if not (r := self.r):
-                return repeat((), len(data))
+        elif r < 3:
+            return NWISE_ITER[r](first)
 
-            elif r < 3:
-                return NWISE_ITER[r](first)
+        else:
+            r = range(1, r)
+            first = iter(first)
 
-            else:
-                r = range(1, r)
-                first = iter(first)
+            args = map(islice, repeat(data), r, R_NONE)
 
-                if not reverse:
-                    args = map(islice, repeat(data), r, R_NONE)
+            return zip(first, *args)
 
-                return zip(first, *args)
+    def __reversed__(self, /):
+        first = data = self.data
 
-        return __iter__
+        first = reversed(first)
+
+        if not (r := self.r):
+            return repeat((), len(data))
+
+        elif r < 3:
+            return NWISE_ITER[r](first)
+
+        else:
+            r = range(1, r)
+
+            args = map(islice, repeat(data), r, R_NONE)
+
+            return zip(first, *args)
 
     def __len__(self, /) -> int:
         return len(self.data) - (self.r - 1) if self else 0
@@ -113,7 +124,7 @@ class Product(Combinations, Generic[Unpack[TProd]]):
 
         for seq, size in zip(*self._its()):
             index, mod = divmod(index, size)
-            values.append(data[mod])
+            values.append(seq[mod])
 
         return reversed(values)
 

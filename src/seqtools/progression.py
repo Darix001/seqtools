@@ -1,56 +1,13 @@
 import itertools as it  # pending for correct annotation
-from abc import abstractmethod
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator
 from math import log, trunc
 from operator import floordiv, mul
 from typing import Self
 
-from attrs import field, frozen
+from attrs import frozen
 
-from .bases import Ranged, pos_range
+from .bases import BaseProgression
 
-
-@frozen(slots=True)
-class BaseProgression[T](Ranged[T]):
-    start: T
-    step: T
-    r: range = field(converter=pos_range, alias="size")
-    data: Sequence[T] = field(init=False, repr=False)
-
-    def __repr__(self, /) -> str:
-        return f"{type(self).__name__}({self.start!r}, {self.step!r}, size={len(self.r)!r})"
-
-    @abstractmethod
-    def unbound_index(self, number: T) -> int: ...
-
-    @abstractmethod
-    def _sliced(self, r: range, /) -> Self: ...
-
-    def _contains(self, number, /):
-        return self.unbound_index(number) in self.r
-
-    @property
-    def stop(self, /) -> T:
-        return self._getitem(self.r.stop)
-
-    @property
-    def last(self, /) -> T:
-        return self._getitem(self.r[-1])
-
-    def clear(self, /) -> Self:
-        return type(self)(0, 0, 0)
-
-    def _getslice(self, r: range, /) -> Self:
-        if r:
-            return self._sliced(r)
-        else:
-            return self.clear()
-
-    def _count(self, number: T, r: range, /) -> int:
-        return r.count(self.unbound_index(number))
-
-    def _index(self, number: T, r: range, /) -> int:
-        return r.index(self.unbound_index(number))
 
 
 @frozen(order=True, repr=False)
