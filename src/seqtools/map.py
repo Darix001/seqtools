@@ -99,7 +99,3 @@ class Starmap[T](BaseMap[T]):
 
     def _getitem(self, func: Callable[..., T], item: Any) -> T:
         return func(*item)
-
-
-a = (Map(int, "12212121") + 2).as_integer_ratio()
-print()
