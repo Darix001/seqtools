@@ -4,7 +4,7 @@ from collections import ChainMap
 from functools import partial
 from operator import attrgetter, methodcaller
 
-from .bases import Any, BaseMap, Callable, Self, Sequence, frozen
+from .bases import Any, BaseMap, Callable, Self, frozen
 
 scalar_lookup = ChainMap(vars(builtins), vars(operator))
 
