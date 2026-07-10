@@ -74,14 +74,7 @@ class BaseSequence(Sequence[T], Generic[T]):
     """Base class for all classes in this module."""
 
     __slots__ = ()
-    iterfunc = None
     _setattr = object.__setattr__
-
-    def __init_subclass__(cls, /) -> None:
-        factory: Callable[[bool], Callable[[Self], Iterator[Any]]] | None = cls.iterfunc
-        if factory is not None:
-            cls.__iter__, cls.__reversed__ = map(factory, (False, True))
-            del cls.iterfunc
 
     def value_error(self, value, /) -> ValueError:
         return ValueError(f"{value!r} not in {type(self).__name__}")
@@ -99,7 +92,7 @@ class WithData[T](BaseSequence[T]):
 
     def __replace__(self, /, data) -> Self:
         new = super().__new__()
-        new._setattr("data", data)
+        new._setattr("data", data or self.data)
         return new
 
 
@@ -292,11 +285,20 @@ class BaseMap[T](WithData[T]):
         return len(self.data)
 
     @abstractmethod
-    def _getitem(self, func: Callable[..., T], item: Any):
+    def _getitem(self, func: Callable[..., T], item: Any) -> T:
         pass
 
-    def __getitem__(self, index: SupportsIndex):
-        return self._getitem(self.func, self.data[index])
+    def __replace__(self, /, func=None, data=None) -> Self:
+        new = super().__replace__(data)
+        new._setattr("func", func or self.func)
+        return new
+
+    def __getitem__(self, index: SupportsIndex | slice) -> T | Self:
+        item = self.data[index]
+        if isinstance(index, slice):
+            return self.__replace__(item)
+        else:
+            return self._getitem(self.func, item)
 
     def __init_subclass__(cls, /, infer_iter: bool = True):
         super().__init_subclass__()
