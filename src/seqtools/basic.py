@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import builtins
 import operator as op
 from collections import Counter, UserList
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from itertools import chain, islice
 from typing import Any, SupportsIndex, overload
 
 from attrs import field, frozen
 from more_itertools import locate
+from playroom.methodtools import SetNameFactory
 
 from .bases import (
     OPINT,
@@ -16,6 +18,7 @@ from .bases import (
     WithData,
     boolen,
     check_nargs_on_overload,
+    datamethod,
 )
 from .funcs import getitems
 
@@ -42,18 +45,13 @@ class SequenceView[T](WithData[T]):
         else:
             return data[index]
 
+    @SetNameFactory
+    def __len__(name: str, /):
+        return datamethod(getattr(builtins, name.strip("_")))
+
     index, count = UserList.index, UserList.count
 
-    __len__, __contains__ = UserList.__len__, UserList.__contains__
-
-    def __iter__(self, /) -> Iterator[T]:
-        return iter(self.data)
-
-    def __reversed__(self, /) -> Iterator[T]:
-        return reversed(self.data)
-
-    def __bool__(self, /) -> bool:
-        return bool(self.data)
+    __iter__ = __reversed__ = __bool__ = __len__
 
 
 class ReverseView[T](SequenceView[T]):

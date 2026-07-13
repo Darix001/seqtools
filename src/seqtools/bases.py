@@ -19,6 +19,7 @@ from typing import (
 )
 
 from attrs import field, frozen
+from playroom.methodtools import SetNameFactory
 
 from .funcs import isizes
 
@@ -169,11 +170,12 @@ class Ranged[T](BaseIndexed[T]):
     __slots__ = ()
     r: range
 
-    def __len__(self, /):
-        return len(self.r)
+    @SetNameFactory
+    def __len__(name: str, /):
+        func = getattr(builtins, name)
+        return lambda self, /: func(self.r)
 
-    def __bool__(self, /):
-        return bool(self.r)
+    __bool__ = __len__
 
 
 @base_frozen
