@@ -4,7 +4,7 @@ import builtins
 import itertools
 import operator as op
 from abc import abstractmethod
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from functools import partial, wraps
 from sys import maxsize
 from typing import (
@@ -19,7 +19,7 @@ from typing import (
 )
 
 from attrs import field, frozen
-from playroom.methodtools import SetNameFactory
+from playroom.methodtools import SetNameFactory, dunder_method_factory
 
 from .funcs import isizes
 
@@ -170,9 +170,8 @@ class Ranged[T](BaseIndexed[T]):
     __slots__ = ()
     r: range
 
-    @SetNameFactory
-    def __len__(name: str, /):
-        func = getattr(builtins, name)
+    @dunder_method_factory
+    def __len__(func: Callable, /):
         return lambda self, /: func(self.r)
 
     __bool__ = __len__

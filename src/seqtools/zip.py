@@ -136,7 +136,7 @@ class ZipLongest(BaseZip[*TZip]):
     def __repr__(self, /):
         return f"{self._incomplete_repr()}, strict={self.strict!r})"
 
-    __bool__: datamethod[bool] = datamethod(any)
+    __bool__ = datamethod(any)
 
     __len__ = calcsize(max)
 

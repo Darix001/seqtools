@@ -9,7 +9,7 @@ from typing import Any, SupportsIndex, overload
 
 from attrs import field, frozen
 from more_itertools import locate
-from playroom.methodtools import SetNameFactory
+from playroom.methodtools import dunder_method_factory
 
 from .bases import (
     OPINT,
@@ -45,13 +45,9 @@ class SequenceView[T](WithData[T]):
         else:
             return data[index]
 
-    @SetNameFactory
-    def __len__(name: str, /):
-        return datamethod(getattr(builtins, name.strip("_")))
-
     index, count = UserList.index, UserList.count
 
-    __iter__ = __reversed__ = __bool__ = __len__
+    __iter__ = __reversed__ = __bool__ = __len__ = dunder_method_factory(datamethod)
 
 
 class ReverseView[T](SequenceView[T]):
@@ -81,14 +77,18 @@ class ReverseView[T](SequenceView[T]):
             else:
                 return Slice(self, index)
         else:
-            return data[~index]
+            return data[~op.index(index)]
 
-    def index(self, value: Any, start: int = 0, stop: OPINT = None, /) -> int:
+    def index(
+        self, value: Any, start: SupportsIndex = 0, stop: SupportsIndex | None = None, /
+    ) -> int:
         n = len(data := self.data)
         if not start and stop is None:
             return ~data.index(value)
         else:
-            return ~data.index(value, ~stop + n if stop else n, ~start + n)
+            return ~data.index(
+                value, ~op.index(stop) + n if stop else n, ~op.index(start) + n
+            )
 
 
 @frozen
