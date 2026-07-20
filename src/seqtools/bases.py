@@ -14,19 +14,15 @@ from typing import (
     Self,
     SupportsIndex,
     TypeVar,
-    TypeVarTuple,
     overload,
 )
 
 from attrs import field, frozen
-from playroom.methodtools import SetNameFactory, dunder_method_factory
+from playroom.methodtools import dunder_method_factory
 
 from .funcs import isizes
 
 OPINT = Optional[int]
-NS = Sequence[Sequence[Any]]
-TS = tuple[Sequence[Any]]
-TVT = TypeVarTuple("Ts")
 
 
 def boolen(
